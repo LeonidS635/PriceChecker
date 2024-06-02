@@ -117,14 +117,6 @@ class App(customtkinter.CTk):
         self.connect()
 
     def enable_buttons_connection(self, _):
-        # for i, is_connected in enumerate(self.websites_list_frame.logged_in_websites):
-        #     if not is_connected:
-        #         self.buttons_frame.connect_button.configure(state="normal")
-        #         self.buttons_frame.connect_button.configure(command=self.connection_frame.reconnect)
-        #         break
-        # else:
-        #     self.buttons_frame.connect_button.configure(state="disabled")
-
         for i, is_connected in enumerate(self.websites_list_frame.logged_in_websites):
             if is_connected:
                 self.buttons_frame.connect_button.configure(state="disabled")
