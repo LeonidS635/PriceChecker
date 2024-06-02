@@ -83,11 +83,7 @@ class App(customtkinter.CTk):
         self.bind("<<EnableSearchButton>>", self.enable_buttons_search)
         self.bind("<<DisableSearchButton>>", self.disable_buttons_search)
 
-        self.bind("<<LoginDasi>>",
-                  lambda event: self.connection_frame.login(
-                      self.websites_list_frame.websites[self.websites_list_frame.websites_names.index("Dasi")],
-                      self.websites_list_frame.login_data["Dasi"]["login"],
-                      self.websites_list_frame.login_data["Dasi"]["password"]))
+        self.bind("<<LoginDasi>>", lambda event: self.connection_frame.login("Dasi"))
 
         for website in self.websites_list_frame.websites_names:
             self.bind(f"<<ReportErrorTime-{website}>>", lambda event, site=website: self.report_error_time(site))

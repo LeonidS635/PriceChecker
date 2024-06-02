@@ -1,5 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
-from GUI import login_window, passwords_window
+from GUI import captcha_window, passwords_window
 from json import load
 from os.path import exists
 from threading import Thread
@@ -16,11 +16,19 @@ class ConnectionFrame:
 
         self.passwords_file = "passwords.json"
 
-    def login(self, website, login, password):
+    def login(self, website_name):
+        with open(self.passwords_file, "r") as file:
+            login_data = load(file)
+
+        login = login_data[website_name]["login"]
+        password = login_data[website_name]["password"]
+        website_index = self.websites_list_frame.websites_names.index(website_name)
+
         if self.login_form is None or not self.login_form.winfo_exists():
-            self.login_form = login_window.LoginWindow(self.master, website,
-                                                       self.websites_list_frame.websites.index(website),
-                                                       self.websites_list_frame.logged_in_websites, login, password)
+            self.login_form = captcha_window.CaptchaWindow(self.master,
+                                                           self.websites_list_frame.websites[website_index],
+                                                           website_index, self.websites_list_frame.logged_in_websites,
+                                                           login, password)
             self.login_form.grab_set()
         else:
             self.login_form.focus()
