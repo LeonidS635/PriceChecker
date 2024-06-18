@@ -86,21 +86,26 @@ class Satair:
             return self.status
 
         products = self.response.json()["Data"]["Products"]
-        info_params = {
-            "productPriceRequests": [
-                {
-                    "OfferId": product["Code"],
-                    "Quantity": 1
-                }
-                for product in products
-            ]
-        }
+        info_params = {"productPriceRequests": []}
+        for product in products:
+            if product["ManufacturerAid"] != number:
+                break
+
+            info_params["productPriceRequests"].append({
+                "OfferId": product["Code"],
+                "Quantity": 1
+            })
+
+        if not info_params["productPriceRequests"]:
+            return self.status
 
         if not self.request_wrapper(
                 lambda: self.session.post(add_info_url, json=info_params, cookies=self.auth_info, timeout=self.delay)):
             return self.status
 
         add_info_products = self.response.json()
+        if not add_info_products:
+            return self.status
 
         for i, product in enumerate(products):
             product_info["part number"] = product["Sku"]
