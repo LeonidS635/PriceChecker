@@ -77,6 +77,10 @@ class Satair:
             "other information": ""
         }
 
+        def reset_product_info():
+            product_info.clear()
+            product_info["vendor"] = "satair"
+
         add_info_url = "https://www.satair.com/api/product/additionalinfo/"
         interchanges_url = "https://www.satair.com/api/product/interchangeable"
         plants_url = "https://www.satair.com/api/product/plants/"
@@ -86,69 +90,78 @@ class Satair:
             return self.status
 
         products = self.response.json()["Data"]["Products"]
-        info_params = {"productPriceRequests": []}
-        for product in products:
-            if product["ManufacturerAid"] != number:
-                break
+        products_number = len(products)
+        batch_size = 5
 
-            info_params["productPriceRequests"].append({
-                "OfferId": product["Code"],
-                "Quantity": 1
-            })
+        for batch_index in range((products_number + batch_size - 1) // batch_size):
+            info_params = {"productPriceRequests": []}
+            for i in range(batch_index * batch_size, min(products_number, (batch_index + 1) * batch_size)):
+                if products[i]["ManufacturerAid"] != number:
+                    break
 
-        if not info_params["productPriceRequests"]:
-            return self.status
+                info_params["productPriceRequests"].append({
+                    "OfferId": products[i]["Code"],
+                    "Quantity": 1
+                })
 
-        if not self.request_wrapper(
-                lambda: self.session.post(add_info_url, json=info_params, cookies=self.auth_info, timeout=self.delay)):
-            return self.status
-
-        add_info_products = self.response.json()
-        if not add_info_products:
-            return self.status
-
-        for i, product in enumerate(products):
-            product_info["part number"] = product["Sku"]
-            product_info["description"] = product["Name"].lower()
-            product_info["condition"] = product["State"]
-            product_info["QTY"] = str(add_info_products["Data"][i]["RemainingOfferQuantity"]) \
-                if add_info_products["Data"][i]["RemainingOfferQuantity"] else ""
-            product_info["price"] = add_info_products["Data"][i]["Price"]["Value"] \
-                if ("Value" in add_info_products["Data"][i]["Price"].keys() and
-                    add_info_products["Data"][i]["Price"]["Value"] != "0") else ""
-            product_info["lead time"] = add_info_products["Data"][i]["StockIndication"] \
-                if add_info_products["Data"][i]["StockIndication"] != "N/A" else ""
-            product_info["warehouse"] = add_info_products["Data"][i]["Warehouse"]["Name"] \
-                if "Warehouse" in add_info_products["Data"][i].keys() else ""
-
-            if not self.request_wrapper(
-                    lambda: self.session.get(interchanges_url, data={"sku": product_info["part number"]},
-                                             cookies=self.auth_info)):
+            if not info_params["productPriceRequests"]:
                 return self.status
 
-            interchanges_data = self.response.json()
-            interchanges_list = []
-            if interchanges_data:
-                for interchangeable in interchanges_data["Data"]:
-                    interchanges_list.append(interchangeable["Sku"])
-            interchanges = " ; ".join(interchanges_list) if interchanges_list else ""
-            product_info["other information"] = f"interchanges: {interchanges}" if interchanges else ""
-
             if not self.request_wrapper(
-                    lambda: self.session.get(plants_url + product["Code"], cookies=self.auth_info, timeout=self.delay)):
+                    lambda: self.session.post(add_info_url, json=info_params, cookies=self.auth_info,
+                                              timeout=self.delay)):
                 return self.status
 
-            plants_data = self.response.json()
-            if plants_data and plants_data["Data"]["HasPlants"]:
-                for plant in plants_data["Data"]["Plants"]:
-                    if plant["InStock"]:
-                        product_info["lead time"] = "In stock"
-                    product_info["QTY"] = str(plant["Quantity"])
-                    product_info["warehouse"] = plant["Warehouse"]
+            add_info_products = self.response.json()
+            if not add_info_products:
+                return self.status
 
+            for i in range(batch_index * batch_size, min(products_number, (batch_index + 1) * batch_size)):
+                batch_int_index = i - batch_index * batch_size
+
+                reset_product_info()
+                product_info["part number"] = products[i]["Sku"]
+                product_info["description"] = products[i]["Name"].lower()
+                product_info["condition"] = products[i]["State"]
+                product_info["QTY"] = str(add_info_products["Data"][batch_int_index]["RemainingOfferQuantity"]) \
+                    if add_info_products["Data"][batch_int_index]["RemainingOfferQuantity"] else ""
+                product_info["price"] = add_info_products["Data"][batch_int_index]["Price"]["Value"] \
+                    if ("Value" in add_info_products["Data"][batch_int_index]["Price"].keys() and
+                        add_info_products["Data"][batch_int_index]["Price"]["Value"] != "0") else ""
+                product_info["lead time"] = add_info_products["Data"][batch_int_index]["StockIndication"] \
+                    if add_info_products["Data"][batch_int_index]["StockIndication"] != "N/A" else ""
+                product_info["warehouse"] = add_info_products["Data"][batch_int_index]["Warehouse"]["Name"] \
+                    if "Warehouse" in add_info_products["Data"][batch_int_index].keys() else ""
+
+                if not self.request_wrapper(
+                        lambda: self.session.get(interchanges_url, data={"sku": product_info["part number"]},
+                                                 cookies=self.auth_info)):
+                    return self.status
+
+                interchanges_data = self.response.json()
+                interchanges_list = []
+                if interchanges_data:
+                    for interchangeable in interchanges_data["Data"]:
+                        interchanges_list.append(interchangeable["Sku"])
+                interchanges = " ; ".join(interchanges_list) if interchanges_list else ""
+                product_info["other information"] = f"interchanges: {interchanges}" if interchanges else ""
+
+                if not self.request_wrapper(
+                        lambda: self.session.get(plants_url + products[i]["Code"], cookies=self.auth_info,
+                                                 timeout=self.delay)):
+                    return self.status
+
+                plants_data = self.response.json()
+                if plants_data and plants_data["Data"]["HasPlants"]:
+                    for plant in plants_data["Data"]["Plants"]:
+                        if plant["InStock"]:
+                            product_info["lead time"] = "In stock"
+                        product_info["QTY"] = str(plant["Quantity"])
+                        product_info["warehouse"] = plant["Warehouse"]
+
+                        search_results.append(deepcopy(product_info))
+                else:
                     search_results.append(deepcopy(product_info))
-            else:
-                search_results.append(deepcopy(product_info))
 
         return self.status
 
