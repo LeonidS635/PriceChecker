@@ -1,30 +1,43 @@
 from bs4 import BeautifulSoup
-import requests
+from copy import deepcopy
+from requests import Response, Session
+from requests.exceptions import RequestException, Timeout
+from typing import Callable
 
 
 class Aerobay:
     def __init__(self):
-        self.session = requests.Session()
+        self.session = Session()
 
-        self.url = "https://www.aero-bay.com/q"
-
+        self.delay = 20
         self.logged_in = False
+        self.response = None
         self.status = "OK"
 
     def __del__(self):
         self.session.close()
 
-    def login_function(self, login, password):
-        log_in_link = "https://www.aero-bay.com"
-
+    def request_wrapper(self, request: Callable[[], Response]) -> bool:
         try:
-            auth = self.session.get(log_in_link)
-        except ConnectionError:
+            self.response = request()
+            self.response.raise_for_status()
+        except Timeout:
+            self.status = "Time error"
+            return False
+        except RequestException:
             self.status = "Connection error"
+            return False
+        else:
+            self.status = "OK"
+            return True
+
+    def login_function(self, login: str, password: str) -> str:
+        login_url = "https://www.aero-bay.com"
+        if not self.request_wrapper(lambda: self.session.get(login_url, timeout=self.delay)):
             return self.status
 
-        bs = BeautifulSoup(auth.text, 'lxml')
-        csrf = bs.find("input", {"name": "_csrf"})["value"]
+        page = BeautifulSoup(self.response.text, 'lxml')
+        csrf = page.find("input", {"name": "_csrf"})["value"]
 
         login_data = {
             "_csrf": csrf,
@@ -32,10 +45,12 @@ class Aerobay:
             "password": password
         }
 
-        login_page = self.session.post(log_in_link + "/j_spring_security_check", data=login_data)
-        login_bs = BeautifulSoup(login_page.text, "lxml")
+        if not self.request_wrapper(
+                lambda: self.session.post(login_url + "/j_spring_security_check", data=login_data, timeout=self.delay)):
+            return self.status
+        page = BeautifulSoup(self.response.text, "lxml")
 
-        if not login_bs.find(string="Email or password is incorrect"):
+        if not page.find(string="Email or password is incorrect"):
             self.logged_in = True
             self.status = "OK"
         else:
@@ -43,62 +58,53 @@ class Aerobay:
 
         return self.status
 
-    def search_part(self, number, search_results):
+    def search_part(self, number: str, search_results: list) -> str:
         if not self.logged_in:
             self.status = "Login error"
             return self.status
 
-        self.status = "OK"
+        product_info = {
+            "vendor": "aerobay",
+            "part number": "",
+            "description": "",
+            "QTY": "",
+            "price": "",
+            "condition": "",
+            "lead time": "",
+            "warehouse": "",
+            "other information": ""
+        }
 
-        page_number = 1
+        def reset_product_info():
+            product_info.clear()
+            product_info["vendor"] = "aerobay"
 
-        exact_match = True
-        while exact_match:
-            try:
-                page = self.session.get(self.url,
-                                        params={"searchType": "PART_NUMBER", "item": number, "page": page_number})
-            except ConnectionError:
-                self.status = "Connection error"
-                return self.status
+        search_url = "https://www.aero-bay.com/q"
 
-            bs = BeautifulSoup(page.text, "lxml")
+        if not self.request_wrapper(
+                lambda: self.session.get(search_url, params={"searchType": "PART_NUMBER", "item": number},
+                                         timeout=self.delay)):
+            return self.status
+        page = BeautifulSoup(self.response.text, "lxml")
 
-            part = bs.find("div", {"class": "item"})
+        parts_list = page.select_one("div[id='resultLists']")
+        if parts_list is not None:
+            for part in parts_list.select("div[class='parent_product_box_list']"):
+                description, condition, qty, _, price, _, lead_time, _, _ = part.select(
+                    "div[class*='product_infos_inside_product_box_list']")
 
-            if not part:
-                break
+                reset_product_info()
+                product_info["part number"] = part.select_one("strong").text
+                product_info["description"] = description.select_one("p").text.lower()
+                product_info["QTY"] = qty.select_one("strong").text
+                product_info["price"] = '$' + price_parts[1].text + '.' + price_parts[2].text if (
+                    price_parts := price.select_one("span > span").findChildren()) else ""
+                product_info["condition"] = condition.select_one("span").text
+                product_info["lead time"] = lead_time.text.strip()
 
-            while part:
-                part_id = part.find("strong").text
-                if part_id != number:
-                    exact_match = False
-                    break
-
-                price_span = part.find("span", {"class": "small-text bold"}).find("span")
-
-                if price_span["class"][0] == "blue-text":
-                    spans = price_span.contents
-                    price = spans[1].text + spans[3].text + '.' + spans[5].text
-                else:
-                    price = ''
-
-                description = part.find("p", {"class": "lit-bold black-text"}).text.lower()
-
-                table = part.find("table")
-                cc, qty, _, _, lead_time, _, _ = table.find_all("tr")[1].find_all("td")
-
-                search_results.append({
-                    "vendor": "aerobay",
-                    "part number": number,
-                    "description": description,
-                    "QTY": qty.contents[0].text,
-                    "price": price,
-                    "condition": cc.find("span").text,
-                    "lead time": lead_time.text.strip()
-                })
-
-                part = part.find_next("div", {"class": "item"})
-
-            page_number += 1
+                search_results.append(deepcopy(product_info))
 
         return self.status
+
+    def change_delay(self, new_delay):
+        self.delay = new_delay
