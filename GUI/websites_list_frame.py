@@ -1,6 +1,6 @@
 import customtkinter
 from WebSites import aerobay, aerospareparts, aircostcontrol, allaero, ajweventory, aviodirect, boeingshop, dasi, \
-    globalaviation, lasaero, primaaviation, proponent, satair, turboresources, wencor
+    globalaviation, lasaero, primaaviation, proponent, satair, scross, turboresources, wencor
 
 
 class WebsitesListFrame(customtkinter.CTkFrame):
@@ -33,6 +33,7 @@ class WebsitesListFrame(customtkinter.CTkFrame):
             "Primaaviation",
             "Proponent",
             "Satair",
+            "Scross",
             "Turboresources",
             "Wencor"
         ]
@@ -81,6 +82,7 @@ class WebsitesListFrame(customtkinter.CTkFrame):
         self.websites.append(primaaviation.Primaaviation())
         self.websites.append(proponent.Proponent())
         self.websites.append(satair.Satair())
+        self.websites.append(scross.Scross())
         self.websites.append(turboresources.Turboresources())
         self.websites.append(wencor.Wencor())
 
