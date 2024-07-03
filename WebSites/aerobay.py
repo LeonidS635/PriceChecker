@@ -84,7 +84,10 @@ class Aerobay:
         if not self.request_wrapper(
                 lambda: self.session.get(search_url, params={"searchType": "PART_NUMBER", "item": number},
                                          timeout=self.delay)):
+            if self.response.status_code == 404:
+                self.status = "OK"
             return self.status
+
         page = BeautifulSoup(self.response.text, "lxml")
 
         parts_list = page.select_one("div[id='resultLists']")
