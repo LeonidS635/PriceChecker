@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup
 import requests
 
 
-class AJWeventory:
+class Ajweventory:
     def __init__(self):
         self.session = requests.Session()
 

@@ -52,6 +52,12 @@ class Proponent:
                 login_button.click()
             except ElementClickInterceptedException:
                 try:
+                    cookie_button = self.driver.find_element(By.XPATH, "//button[@data-tid='banner-decline']")
+                    cookie_button.click()
+                except NoSuchElementException:
+                    pass
+
+                try:
                     close_button = self.driver.find_element(By.XPATH, "//div[@class='fancybox-item fancybox-close']")
                     close_button.click()
                 except NoSuchElementException:
@@ -92,7 +98,7 @@ class Proponent:
                 search_button.click()
             except ElementClickInterceptedException:
                 try:
-                    cookie_button = self.driver.find_element(By.XPATH, "//button[@id='catapultCookie']")
+                    cookie_button = self.driver.find_element(By.XPATH, "//button[@data-tid='banner-decline']")
                     cookie_button.click()
                 except NoSuchElementException:
                     pass

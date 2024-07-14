@@ -9,12 +9,10 @@ class Satair:
         self.session = Session()
 
         self.auth_info = {}
-        self.logged_in = False
-        self.status = "OK"
-
-        self.response = None
-
         self.delay = 20
+        self.logged_in = False
+        self.response = None
+        self.status = "OK"
 
     def __del__(self):
         self.session.close()
@@ -30,6 +28,7 @@ class Satair:
             self.status = "Connection error"
             return False
         else:
+            self.status = "OK"
             return True
 
     def login_function(self, login: str, password: str) -> str:
@@ -123,15 +122,15 @@ class Satair:
                 product_info["part number"] = products[i]["Sku"]
                 product_info["description"] = products[i]["Name"].lower()
                 product_info["condition"] = products[i]["State"]
-                product_info["QTY"] = str(add_info_products["Data"][batch_int_index]["RemainingOfferQuantity"]) \
-                    if add_info_products["Data"][batch_int_index]["RemainingOfferQuantity"] else ""
-                product_info["price"] = add_info_products["Data"][batch_int_index]["Price"]["Value"] \
-                    if ("Value" in add_info_products["Data"][batch_int_index]["Price"].keys() and
-                        add_info_products["Data"][batch_int_index]["Price"]["Value"] != "0") else ""
-                product_info["lead time"] = add_info_products["Data"][batch_int_index]["StockIndication"] \
-                    if add_info_products["Data"][batch_int_index]["StockIndication"] != "N/A" else ""
-                product_info["warehouse"] = add_info_products["Data"][batch_int_index]["Warehouse"]["Name"] \
-                    if "Warehouse" in add_info_products["Data"][batch_int_index].keys() else ""
+                product_info["QTY"] = str(qty) if (
+                    qty := add_info_products["Data"][batch_int_index]["RemainingOfferQuantity"]) else ""
+                product_info["price"] = '$' + price if (
+                    (price := add_info_products["Data"][batch_int_index]["Price"].get("Value")) is not None and
+                    price != "0") else ""
+                product_info["lead time"] = lead_time if (
+                    (lead_time := add_info_products["Data"][batch_int_index]["StockIndication"]) != "N/A") else ""
+                product_info["warehouse"] = warehouse_dict["Name"] if (
+                    (warehouse_dict := add_info_products["Data"][batch_int_index].get("Warehouse")) is not None) else ""
 
                 if not self.request_wrapper(
                         lambda: self.session.get(interchanges_url, data={"sku": product_info["part number"]},

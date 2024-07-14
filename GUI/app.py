@@ -1,26 +1,16 @@
 import customtkinter
+from GUI import filters_window, passwords_window, error_handler, frames
+from Logic import controller, data_file
 import traceback
-from GUI import connection_frame, search_frame, websites_list_frame, filters_frame, error_handler
-
-
-class ButtonsFrame(customtkinter.CTkFrame):
-    def __init__(self, master, **kwargs):
-        super().__init__(master, **kwargs)
-
-        self.reconnect_button = customtkinter.CTkButton(self, text="Reconnect", command=master.reconnect,
-                                                        state="disabled")
-        self.reconnect_button.grid(row=0, column=0, padx=(5, 5), pady=(5, 5))
-
-        self.connect_button = customtkinter.CTkButton(self, text="Connect", command=master.connect)
-        self.connect_button.grid(row=0, column=1, padx=(5, 5), pady=(5, 5))
-
-        self.exit_button = customtkinter.CTkButton(self, text="Exit", command=master.exit)
-        self.exit_button.grid(row=0, column=2, padx=(5, 5), pady=(5, 5))
 
 
 class App(customtkinter.CTk):
     def __init__(self):
         super().__init__()
+
+        self.data = data_file.DataClass(master=self)
+        self.frames = frames.Frames(data=self.data)
+        self.controller = controller.Controller(data=self.data, frames=self.frames)
 
         self.geometry("1000x800")
         self.title("Price checker")
@@ -29,123 +19,78 @@ class App(customtkinter.CTk):
         self.report_callback_exception = self.report_callback_exception
 
         self.grid_columnconfigure(1, weight=1)
-        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=1)
 
         self.label = customtkinter.CTkLabel(self, text="Price\nChecker", font=("Arial", 25), justify=customtkinter.LEFT)
         self.label.grid(row=0, column=0, sticky="nw", padx=5, pady=(5, 5))
 
-        self.filters_frame = None
+        self.frames.connection_frame.grid(row=6, column=0, sticky="nsew")
+        self.frames.connection_frame.grid(row=5, column=0, sticky="nsew")
+        self.frames.search_frame.grid(row=0, column=1, sticky="nsew")
+        self.frames.search_results_frame.grid(row=1, column=1, sticky="nsew", rowspan=6)
+        self.frames.websites_list_frame.grid(row=4, column=0, sticky="nsew")
+
+        self.create_csv_button = customtkinter.CTkButton(self, text="Create csv",
+                                                         command=self.frames.search_results_frame.create_csv)
+        self.create_csv_button.grid(row=1, column=0, padx=(5, 5), pady=(5, 5))
 
         self.filters_button = customtkinter.CTkButton(self, text="Filters", command=self.create_filters_frame)
         self.filters_button.grid(row=2, column=0, padx=(5, 5), pady=(5, 5))
 
-        self.websites_list_frame = websites_list_frame.WebsitesListFrame(self, corner_radius=0)
-        self.websites_list_frame.grid(row=4, column=0, sticky="nswe")
-
-        self.connection_frame = connection_frame.ConnectionFrame(self, self.websites_list_frame)
-
-        self.buttons_frame = ButtonsFrame(self, corner_radius=0)
-        self.buttons_frame.grid(row=5, column=0, sticky="nswe")
-
-        self.search_frame = search_frame.SearchFrame(self, self.websites_list_frame, corner_radius=0)
-        self.search_frame.grid(row=0, column=1, sticky="nswe", rowspan=6)
-
-        self.update_search_results_button = customtkinter.CTkButton(self, text="Update search results",
-                                                                    command=self.search_frame.print_results,
-                                                                    state="disabled")
+        self.update_search_results_button = customtkinter.CTkButton(
+            self, text="Update search results", command=self.frames.search_results_frame.update_search_results)
         self.update_search_results_button.grid(row=3, column=0, padx=(5, 5), pady=(5, 5))
 
-        self.create_csv_button = customtkinter.CTkButton(self, text="Create csv", command=self.search_frame.create_csv,
-                                                         state="disabled")
-        self.create_csv_button.grid(row=1, column=0, padx=(5, 5), pady=(5, 5))
+        self.interactive_elements = [
+            self.filters_button,
+            self.update_search_results_button,
+            self.create_csv_button,
+            self.frames.connection_frame.connect_button,
+            self.frames.connection_frame.reconnect_button,
+            self.frames.connection_frame.passwords_button,
+            self.frames.search_frame.part_number_input,
+            self.frames.search_frame.search_button,
+            self.frames.websites_list_frame.delay_input,
+            self.frames.websites_list_frame.change_delay_button
+        ]
 
         self.bind_events()
+        self.controller.init_parsers()
 
     def create_filters_frame(self):
-        self.filters_frame = filters_frame.FiltersFrame(self, self.websites_list_frame)
-        self.filters_frame.grab_set()
+        filters_window.FiltersFrame(self.data).grab_set()
 
     def bind_events(self):
-        for i in range(len(self.websites_list_frame.websites)):
-            self.bind(f"<<StartProgressBar-{i}>>",
-                      lambda event, number=i: self.websites_list_frame.start_progressbar(number))
-        for i in range(len(self.websites_list_frame.websites)):
-            self.bind(f"<<StopProgressBar-{i}>>",
-                      lambda event, number=i: self.websites_list_frame.stop_progressbar(number))
-        for i in range(len(self.websites_list_frame.websites)):
-            self.bind(f"<<SelectCheckBox-{i}>>",
-                      lambda event, number=i: self.websites_list_frame.select_checkbox(number))
+        self.bind("<<LoginDasi>>", lambda event: self.controller.connector.login_with_captcha("Dasi"))
 
-        self.bind("<<StartProgressBars>>", self.websites_list_frame.start_progressbars)
-        self.bind("<<StopProgressBars>>", self.websites_list_frame.stop_progressbars)
-
-        self.bind("<<EnableConnectionButton>>", self.enable_buttons_connection)
-        self.bind("<<EnableSearchButton>>", self.enable_buttons_search)
-        self.bind("<<DisableSearchButton>>", self.disable_buttons_search)
-
-        self.bind("<<LoginDasi>>", lambda event: self.connection_frame.login("Dasi"))
-
-        for website in self.websites_list_frame.websites_names:
+        for website in self.data.websites_names:
             self.bind(f"<<ReportErrorTime-{website}>>", lambda event, site=website: self.report_error_time(site))
-        for website in self.websites_list_frame.websites_names:
+        for website in self.data.websites_names:
             self.bind(f"<<ReportErrorLogin-{website}>>",
                       lambda event, site=website: self.report_error_login(site))
-        for website in self.websites_list_frame.websites_names:
+        for website in self.data.websites_names:
             self.bind(f"<<ReportErrorConnection-{website}>>",
                       lambda event, site=website: self.report_error_connection(site))
 
     def connect(self):
-        self.search_frame.part_number_input.configure(state="disabled")
-        self.search_frame.search_button.configure(state="disabled")
-        self.create_csv_button.configure(state="disabled")
-        self.websites_list_frame.delay_input.configure(state="disabled")
-        self.websites_list_frame.change_delay_button.configure(state="disabled")
-        self.buttons_frame.reconnect_button.configure(state="disabled")
-        self.buttons_frame.connect_button.configure(state="disabled")
-        self.buttons_frame.exit_button.configure(state="disabled")
-
-        self.connection_frame.connect()
+        self.controller.connect()
 
     def reconnect(self):
-        self.websites_list_frame.deselect_checkboxes()
-        self.websites_list_frame.logged_in_websites = [False for _ in
-                                                       range(len(self.websites_list_frame.websites_names))]
-        self.connect()
+        self.controller.reconnect()
 
-    def enable_buttons_connection(self, _):
-        for i, is_connected in enumerate(self.websites_list_frame.logged_in_websites):
-            if is_connected:
-                self.buttons_frame.connect_button.configure(state="disabled")
-                break
-        else:
-            self.buttons_frame.connect_button.configure(state="normal")
+    def search(self, _=None):
+        self.controller.search()
 
-        self.websites_list_frame.delay_input.configure(state="normal")
-        self.websites_list_frame.change_delay_button.configure(state="normal")
-        self.search_frame.part_number_input.configure(state="normal")
-        self.search_frame.search_button.configure(state="normal")
-        self.buttons_frame.reconnect_button.configure(state="normal")
-        self.buttons_frame.exit_button.configure(state="normal")
+    def change_passwords(self):
+        passwords_window.PasswordsWindow(self.data, self.controller.connector.passwords_file).grab_set()
 
-    def enable_buttons_search(self, _):
-        self.filters_button.configure(state="normal")
-        self.websites_list_frame.delay_input.configure(state="normal")
-        self.websites_list_frame.change_delay_button.configure(state="normal")
-        self.update_search_results_button.configure(state="normal")
-        self.search_frame.part_number_input.configure(state="normal")
-        self.search_frame.search_button.configure(state="normal")
-        self.create_csv_button.configure(state="normal")
-        self.buttons_frame.reconnect_button.configure(state="normal")
+    def enable_interactive_elements(self):
+        for elem in self.interactive_elements:
+            elem.configure(state="normal")
 
-    def disable_buttons_search(self, _):
-        self.filters_button.configure(state="disabled")
-        self.websites_list_frame.delay_input.configure(state="disabled")
-        self.websites_list_frame.change_delay_button.configure(state="disabled")
-        self.update_search_results_button.configure(state="disabled")
-        self.search_frame.part_number_input.configure(state="disabled")
-        self.search_frame.search_button.configure(state="disabled")
-        self.create_csv_button.configure(state="disabled")
-        self.buttons_frame.reconnect_button.configure(state="disabled")
+    def disable_interactive_elements(self):
+        for elem in self.interactive_elements:
+            elem.configure(state="disabled")
 
     def report_error_time(self, website):
         error_handler.ErrorHandler(self, website, "Loading took too much time!")
@@ -154,14 +99,12 @@ class App(customtkinter.CTk):
         error_handler.ErrorHandler(self, website, "Login failed!")
 
     def report_error_connection(self, website):
-        error_handler.FatalErrorHandler(self, f"Unable to connect {website}!", self.exit)
+        error_handler.ErrorHandler(self, website, f"Unable to connect {website}!")
 
     def report_callback_exception(self, *_):
         traceback.print_exc()
         error_handler.FatalErrorHandler(self, traceback.format_exc(limit=0), self.exit)
 
     def exit(self):
-        for website in self.websites_list_frame.websites:
-            website.__del__()
-
+        self.controller.del_parsers()
         self.destroy()
