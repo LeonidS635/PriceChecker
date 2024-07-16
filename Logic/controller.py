@@ -37,28 +37,27 @@ class Controller:
 
     def connect(self):
         thread = Thread(target=lambda: (
-            self.data.master.disable_interactive_elements(),
+            self.data.master.event_generate("<<DisableElems>>"),
             self.connector.connect(),
-            self.data.master.enable_interactive_elements()
+            self.data.master.event_generate("<<EnableElems>>")
         ), daemon=True)
         thread.start()
 
     def reconnect(self):
         thread = Thread(target=lambda: (
-            self.data.master.disable_interactive_elements(),
+            self.data.master.event_generate("<<DisableElems>>"),
             self.connector.reconnect(),
-            self.data.master.enable_interactive_elements()
+            self.data.master.event_generate("<<EnableElems>>")
         ), daemon=True)
         thread.start()
 
     def search(self):
         thread = Thread(target=lambda: (
-            self.data.master.disable_interactive_elements(),
-            # self.frames.search_frame.search_button.configure(text="Stop search", command=self.stop_search,
-            #                                                  state="normal"),
+            self.data.master.event_generate("<<DisableElems>>"),
+            self.data.master.event_generate("<<ChangeSearchButtonToStop>>"),
             self.searcher.search(),
-            # self.frames.search_frame.search_button.configure(text="Search", command=self.search),
-            self.data.master.enable_interactive_elements()
+            self.data.master.event_generate("<<RestoreSearchButton>>"),
+            self.data.master.event_generate("<<EnableElems>>")
         ), daemon=True)
         thread.start()
 
@@ -66,7 +65,7 @@ class Controller:
         self.searcher.stop_search_flag = True
 
     def callback(self, future: Future, number: int, is_connection_phase: bool):
-        self.frames.websites_list_frame.stop_progressbar(number)
+        self.data.master.event_generate(f"<<StopProgressBar-{number}>>")
 
         status = future.result()
         if status == "Time error":

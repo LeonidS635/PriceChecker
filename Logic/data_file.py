@@ -9,7 +9,7 @@ class DataClass:
         self.parsers = []
         self.websites_names = []
 
-        for file_name in listdir("WebSites"):
+        for file_name in listdir("PriceChecker-master/WebSites"):
             if file_name[-3:] == ".py":
                 module_name = file_name.split('.')[0]
                 class_name = module_name.capitalize()

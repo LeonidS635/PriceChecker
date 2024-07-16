@@ -29,7 +29,7 @@ class Searcher:
                     futures = []
                     for i, parser in enumerate(self.data.parsers):
                         if self.data.websites_to_search[i]:
-                            self.frames.websites_list_frame.start_progressbar(i)
+                            self.data.master.event_generate(f"<<StartProgressBar-{i}>>")
 
                             future = executor.submit(parser.search_part, number=part_number,
                                                      search_results=self.frames.search_results_frame.all_search_results[

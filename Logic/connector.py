@@ -40,7 +40,7 @@ class Connector:
         with ThreadPoolExecutor() as executor:
             for i, parser in enumerate(self.data.parsers):
                 if not self.data.logged_in_websites[i]:
-                    self.frames.websites_list_frame.start_progressbar(i)
+                    self.data.master.event_generate(f"<<StartProgressBar-{i}>>")
 
                     if self.data.websites_names[i] == "Dasi":
                         self.data.master.event_generate("<<LoginDasi>>")

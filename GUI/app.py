@@ -24,8 +24,8 @@ class App(customtkinter.CTk):
         self.label = customtkinter.CTkLabel(self, text="Price\nChecker", font=("Arial", 25), justify=customtkinter.LEFT)
         self.label.grid(row=0, column=0, sticky="nw", padx=5, pady=(5, 5))
 
-        self.frames.connection_frame.grid(row=6, column=0, sticky="nsew")
         self.frames.connection_frame.grid(row=5, column=0, sticky="nsew")
+        self.frames.delay_frame.grid(row=6, column=0, sticky="nsew")
         self.frames.search_frame.grid(row=0, column=1, sticky="nsew")
         self.frames.search_results_frame.grid(row=1, column=1, sticky="nsew", rowspan=6)
         self.frames.websites_list_frame.grid(row=4, column=0, sticky="nsew")
@@ -50,8 +50,8 @@ class App(customtkinter.CTk):
             self.frames.connection_frame.passwords_button,
             self.frames.search_frame.part_number_input,
             self.frames.search_frame.search_button,
-            self.frames.websites_list_frame.delay_input,
-            self.frames.websites_list_frame.change_delay_button
+            self.frames.delay_frame.delay_input,
+            self.frames.delay_frame.change_delay_button
         ]
 
         self.bind_events()
@@ -62,6 +62,18 @@ class App(customtkinter.CTk):
 
     def bind_events(self):
         self.bind("<<LoginDasi>>", lambda event: self.controller.connector.login_with_captcha("Dasi"))
+
+        self.bind("<<EnableElems>>", lambda event: self.enable_interactive_elements())
+        self.bind("<<DisableElems>>", lambda event: self.disable_interactive_elements())
+
+        self.bind("<<ChangeSearchButtonToStop>>", lambda event: self.change_search_button_to_stop())
+        self.bind("<<RestoreSearchButton>>", lambda event: self.restore_search_button())
+
+        for i in range(len(self.data.websites_names)):
+            self.bind(f"<<StartProgressBar-{i}>>",
+                      lambda event, number=i: self.frames.websites_list_frame.start_progressbar(number))
+            self.bind(f"<<StopProgressBar-{i}>>",
+                      lambda event, number=i: self.frames.websites_list_frame.stop_progressbar(number))
 
         for website in self.data.websites_names:
             self.bind(f"<<ReportErrorTime-{website}>>", lambda event, site=website: self.report_error_time(site))
@@ -81,6 +93,9 @@ class App(customtkinter.CTk):
     def search(self, _=None):
         self.controller.search()
 
+    def stop_search(self):
+        self.controller.stop_search()
+
     def change_passwords(self):
         passwords_window.PasswordsWindow(self.data, self.controller.connector.passwords_file).grab_set()
 
@@ -91,6 +106,12 @@ class App(customtkinter.CTk):
     def disable_interactive_elements(self):
         for elem in self.interactive_elements:
             elem.configure(state="disabled")
+
+    def change_search_button_to_stop(self):
+        self.frames.search_frame.search_button.configure(text="Stop search", command=self.stop_search, state="normal")
+
+    def restore_search_button(self):
+        self.frames.search_frame.search_button.configure(text="Search", command=self.search)
 
     def report_error_time(self, website):
         error_handler.ErrorHandler(self, website, "Loading took too much time!")
