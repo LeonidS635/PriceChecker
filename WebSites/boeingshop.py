@@ -1,39 +1,28 @@
 from bs4 import BeautifulSoup
+from copy import deepcopy
+from Logic.data_file import Status
+from Logic.parser import ParserRequests
 from re import compile
-from requests import Session
 
 
-class Boeingshop:
+class Boeingshop(ParserRequests):
     def __init__(self):
-        self.session = Session()
+        super().__init__()
 
-        self.session.headers.update(
-            {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
-                              "Chrome/121.0.0.0 Safari/537.36",
-                "X-Requested-With": "XMLHttpRequest"
-            })
+        self.session.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                          "Chrome/121.0.0.0 Safari/537.36",
+            "X-Requested-With": "XMLHttpRequest"
+        })
 
-        self.url = "https://shop.boeing.com/aviation-supply/search"
-
-        self.logged_in = False
-        self.status = "OK"
-
-    def __del__(self):
-        self.session.close()
-
-    def login_function(self, login, password):
-        log_in_link = "https://shop.boeing.com/aviation-supply/login"
-
-        try:
-            auth = self.session.get(log_in_link)
-        except ConnectionError:
-            self.status = "Connection error"
+    def login_function(self, login: str, password: str) -> Status:
+        self.session.cookies.clear()
+        link = "https://shop.boeing.com/aviation-supply/"
+        if not self.request_wrapper(self.session.get, url=(link + "login")):
             return self.status
 
-        bs = BeautifulSoup(auth.text, 'lxml')
-        csrf = bs.find("input", {"name": "CSRFToken"})["value"]
-
+        page = BeautifulSoup(self.response.text, 'lxml')
+        csrf = page.select_one("input[name='CSRFToken']")["value"]
         login_data = {
             "isepubs": "false",
             "j_username": login,
@@ -41,89 +30,56 @@ class Boeingshop:
             "CSRFToken": csrf
         }
 
-        login_page = self.session.post("https://shop.boeing.com/aviation-supply/j_spring_security_check",
-                                       data=login_data)
-        login_bs = BeautifulSoup(login_page.text, "lxml")
+        if not self.request_wrapper(self.session.post, url=(link + "j_spring_security_check"), data=login_data):
+            return self.status
 
-        if login_bs.find(string="Your email or password did not match our records. Please correct and try again.") or (
-                login_bs.find(string=" Please enter valid Username and Password.")):
-            self.status = "Login error"
+        page = BeautifulSoup(self.response.text, "lxml")
+        if page.find(string="Your email or password did not match our records. Please correct and try again.") or (
+                page.find(string=" Please enter valid Username and Password.")):
+            self.logged_in = False
+            self.status = Status.Login_error
         else:
             self.logged_in = True
-            self.status = "OK"
+            self.status = Status.OK
 
         return self.status
 
-    def search_part(self, number, search_results):
-        self.status = "OK"
-
+    def search_part(self, number: str, search_results: list) -> Status:
         if not self.logged_in:
-            self.status = "Login error"
+            self.status = Status.Login_error
             return self.status
 
-        try:
-            page = self.session.get(self.url, params={"text": number})
-        except ConnectionError:
-            self.status = "Connection error"
+        if not self.request_wrapper(self.session.get, url="https://shop.boeing.com/aviation-supply/search",
+                                    params={"text": number}):
             return self.status
 
-        bs = BeautifulSoup(page.text, "lxml")
+        page = BeautifulSoup(self.response.text, "lxml")
+        for ref in page.select("a[class='productMainLink baselink level3 basefont blue hoverBrightBlue']"):
+            part_number = ref.text.strip()
+            if part_number != number:
+                break
 
-        parts_refs = bs.find_all("a", {"class": "productMainLink baselink level3 basefont blue hoverBrightBlue"})
+            if not self.request_wrapper(self.session.get, url=("https://shop.boeing.com" + ref["href"])):
+                return self.status
 
-        if parts_refs:
-            for ref in parts_refs:
-                part_id = ref.text.strip()
-                if part_id != number:
-                    break
+            page = BeautifulSoup(self.response.text, "lxml")
 
-                part_page = self.session.get("https://shop.boeing.com" + ref["href"])
-                part_bs = BeautifulSoup(part_page.text, "lxml")
+            self.product_info["part number"] = part_number
+            self.product_info["description"] = page.select_one("h1[class='breakWord']").text
+            self.product_info["QTY"] = qty.text if ((
+                qty := page.select_one("div[class='basefont level2']"))) is not None else ""
+            self.product_info["price"] = price.text if ((
+                price := page.select_one("span[id='prodNetPrice']"))) is not None else ""
+            self.product_info["QTY"] = condition.text if ((
+                condition := page.find("div", string=compile("Condition")).find_next_sibling(
+                    "div"))) is not None else ""
+            self.product_info["lead time"] = lead_time.text if ((
+                lead_time := page.select_one("h1[class='basefont level5 mr-15']"))) is not None else ""
+            self.product_info["warehouse"] = page.select_one("a[class='basefont level5 light notranslate']").text
+            self.product_info["other information"] = f"available on {availability.text.strip()}" if ((
+                availability := page.select_one(
+                    "div[class='basefont light level5 floatleft']"))) is not None and availability.text.strip() else ""
 
-                description = part_bs.find("h1", {"class": "breakWord"}).text.strip().lower()
-
-                warehouse = part_bs.find("a", {"class": "basefont level5 light notranslate"}).text.strip()
-
-                lead_time = part_bs.find("h1", {"class": "basefont level5 mr-15"})
-                if lead_time is not None:
-                    lead_time = lead_time.text.strip()
-                else:
-                    lead_time = ""
-
-                availability = part_bs.find("div", {"class": "basefont light level5 floatleft"})
-                if availability is not None:
-                    availability = availability.text.strip()
-                else:
-                    availability = ""
-
-                price = part_bs.find("span", {"id": "prodNetPrice"})
-                if price is not None:
-                    price = price.text.strip()
-                else:
-                    price = ""
-
-                qty = part_bs.find("div", {"class": "basefont level2"})
-                if qty is not None:
-                    qty = qty.text.strip()
-                else:
-                    qty = ""
-
-                condition = part_bs.find("div", string=compile("Condition")).find_next_sibling("div")
-                if condition is not None:
-                    condition = condition.text.strip()
-                else:
-                    condition = ""
-
-                search_results.append({
-                    "vendor": "boeingshop",
-                    "part number": number,
-                    "description": description,
-                    "QTY": qty,
-                    "price": price,
-                    "condition": condition,
-                    "lead time": lead_time,
-                    "warehouse": warehouse,
-                    "other information": f"available on{availability}" if availability else ""
-                })
+            search_results.append(deepcopy(self.product_info))
 
         return self.status

@@ -1,12 +1,11 @@
 import customtkinter
 from Logic.data_file import DataClass
+from GUI.frame import Frame
 
 
-class WebsitesListFrame(customtkinter.CTkFrame):
-    def __init__(self, data: DataClass, **kwargs):
-        super().__init__(data.master, **kwargs)
-
-        self.data = data
+class WebsitesListFrame(Frame):
+    def __init__(self, master, data: DataClass, **kwargs):
+        super().__init__(master=master, **kwargs)
 
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -14,25 +13,13 @@ class WebsitesListFrame(customtkinter.CTkFrame):
         self.checkboxes = []
         self.progressbars = []
 
-        for i in range(len(self.data.websites_names)):
+        for i in range(len(data.websites_names)):
             self.checkboxes.append(
-                customtkinter.CTkCheckBox(self, text=self.data.websites_names[i], state="DISABLED", fg_color="green"))
+                customtkinter.CTkCheckBox(self, text=data.websites_names[i], state="DISABLED", fg_color="green"))
             self.checkboxes[i].grid(row=i, column=0, padx=(5, 0), pady=(0, 5), sticky="sw")
 
             self.progressbars.append(customtkinter.CTkProgressBar(self, mode="indeterminate"))
             self.progressbars[i].grid(row=i, column=1, padx=(5, 5), pady=(0, 5), sticky="we")
-
-    def deselect_checkboxes(self):
-        for checkbox in self.checkboxes:
-            checkbox.deselect()
-
-    def start_progressbars(self):
-        for progressbar in self.progressbars:
-            progressbar.start()
-
-    def stop_progressbars(self):
-        for progressbar in self.progressbars:
-            progressbar.stop()
 
     def start_progressbar(self, number):
         self.progressbars[number].start()
@@ -42,3 +29,10 @@ class WebsitesListFrame(customtkinter.CTkFrame):
 
     def select_checkbox(self, number):
         self.checkboxes[number].select()
+
+    def deselect_checkbox(self, number):
+        self.checkboxes[number].deselect()
+
+    def deselect_checkboxes(self):
+        for checkbox in self.checkboxes:
+            checkbox.deselect()

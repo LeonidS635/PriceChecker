@@ -1,10 +1,11 @@
 import customtkinter
 from Logic.data_file import DataClass
+from GUI.frame import Frame
 
 
-class DelayFrame(customtkinter.CTkFrame):
-    def __init__(self, data: DataClass, **kwargs):
-        super().__init__(data.master, **kwargs)
+class DelayFrame(Frame):
+    def __init__(self, master, data: DataClass, **kwargs):
+        super().__init__(master, **kwargs)
 
         self.data = data
 
@@ -16,9 +17,11 @@ class DelayFrame(customtkinter.CTkFrame):
         self.delay_input = customtkinter.CTkEntry(self, textvariable=customtkinter.StringVar(self, value="20"))
         self.delay_input.grid(row=0, column=1, sticky="we")
         self.delay_input.bind("<Return>", self.change_delay)
+        self.interactive_elements.append(self.delay_input)
 
         self.change_delay_button = customtkinter.CTkButton(self, text="Change delay", command=self.change_delay)
         self.change_delay_button.grid(row=0, column=2, padx=(5, 5), pady=(5, 5))
+        self.interactive_elements.append(self.change_delay_button)
 
     def change_delay(self, _=None):
         new_delay = self.delay_input.get()
@@ -29,7 +32,7 @@ class DelayFrame(customtkinter.CTkFrame):
 
         new_delay = max(0, new_delay)
 
-        for website in self.data.parsers:
-            website.delay = new_delay
+        for parser in self.data.parsers:
+            parser.delay = new_delay
 
         self.delay_input.configure(textvariable=customtkinter.StringVar(self, value=str(new_delay)))

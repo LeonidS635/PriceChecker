@@ -6,15 +6,14 @@ from os.path import exists
 
 
 class PasswordsWindow(customtkinter.CTkToplevel):
-    def __init__(self, data: DataClass, passwords_file: str):
-        super().__init__(data.master)
+    def __init__(self, master, data: DataClass, **kwargs):
+        super().__init__(master=master, **kwargs)
 
         self.data = data
-        self.passwords_file = passwords_file
 
         login_data = {}
-        if exists(self.passwords_file):
-            with open(self.passwords_file, "r") as file:
+        if exists(self.data.passwords_file):
+            with open(self.data.passwords_file, "r") as file:
                 login_data = load(file)
 
         self.title("Login data")
@@ -80,7 +79,7 @@ class PasswordsWindow(customtkinter.CTkToplevel):
             password = self.passwords[i].get()
             data[website_name] = {"login": login, "password": password}
 
-        with open(self.passwords_file, "w") as file:
+        with open(self.data.passwords_file, "w") as file:
             dump(data, file, indent=4)
 
         self.destroy()

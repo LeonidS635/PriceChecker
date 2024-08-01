@@ -1,54 +1,38 @@
 from bs4 import BeautifulSoup
-from requests import Session
+from copy import deepcopy
+from Logic.data_file import Status
+from Logic.parser import ParserRequests
 
 
-class Allaero:
+class Allaero(ParserRequests):
     def __init__(self):
-        self.session = Session()
+        super().__init__()
 
-        self.url = "https://www.allaero.com/aircraft-parts/"
-
+    def login_function(self, login: str, password: str) -> Status:
         self.logged_in = True
-        self.status = "OK"
-
-    def __del__(self):
-        self.session.close()
-
-    def login_function(self, login, password):
+        self.status = Status.OK
         return self.status
 
-    def search_part(self, number, search_results):
-        self.status = "OK"
-
-        if not self.logged_in:
-            self.status = "Login error"
+    def search_part(self, number: str, search_results: list) -> Status:
+        if not self.request_wrapper(self.session.get, url=("https://www.allaero.com/aircraft-parts/" + number)):
+            if self.response.status_code == 404:
+                self.status = Status.OK
             return self.status
 
-        try:
-            page = self.session.get(self.url + number)
-        except ConnectionError:
-            self.status = "Connection error"
-            return self.status
+        page = BeautifulSoup(self.response.text, "lxml")
 
-        if page.status_code != 200:
-            return self.status
+        self.product_info["part number"] = page.select_one("span[itemprop='identifier']").text
+        self.product_info["description"] = page.select_one("span[itemprop='name']").text
+        self.product_info["condition"] = condition if ((
+            condition := page.select_one("td[data-title='Condition:']").text)) != "Any" else ""
+        self.product_info["lead time"] = availability if ((
+            availability := page.select_one("td[data-title='Release:']").text)) != "Any" else ""
+        self.product_info["QTY"] = page.select_one("td[data-title='Stock:']").text
 
-        bs = BeautifulSoup(page.text, "lxml")
+        alternatives = [part.select("a")[1].select_one("span").text.strip() for part in
+                        page.select("div[class$='alternate-part']")]
+        self.product_info["other information"] = f"interchanges: {" ; ".join(alternatives)}" if alternatives else ""
 
-        part_id = bs.find("span", {"itemprop": "identifier"}).text
-        description = bs.find("span", {"itemprop": "name"}).text
-        condition = bs.find("td", {"data-title": "Condition:"}).text
-        availability = bs.find("td", {"data-title": "Release:"}).text
-        qty = bs.find("td", {"data-title": "Stock:"}).text
-
-        search_results.append({
-            "vendor": "allaero",
-            "part number": part_id,
-            "description": description,
-            "QTY": qty,
-            "lead time": availability if availability != "Any" else "",
-            "price": "",
-            "condition": condition if condition != "Any" else ""
-        })
+        search_results.append(deepcopy(self.product_info))
 
         return self.status

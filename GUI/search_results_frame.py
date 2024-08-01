@@ -1,25 +1,20 @@
 from CTkXYFrame import CTkXYFrame
-from csv import DictWriter
 from Logic.data_file import DataClass
 from pyperclip import copy
 from textwrap import wrap
 from tkinter import ttk, CENTER
-from time import localtime, strftime
 
 
 class SearchResultsFrame(CTkXYFrame):
-    def __init__(self, data: DataClass, **kwargs):
-        super().__init__(master=data.master, **kwargs)
+    def __init__(self, master, data: DataClass, **kwargs):
+        super().__init__(master=master, **kwargs)
 
         self.data = data
-        self.all_search_results = {}
+        self.search_results_idx = 0
+        self.results_tables = []
 
         self.rowconfigure(0, weight=1)
         self.columnconfigure(0, weight=1)
-
-        self.results_tables = []
-        self.table_headers = ["vendor", "part number", "description", "QTY", "price", "condition", "lead time",
-                              "warehouse", "other information"]
 
         self.style = ttk.Style()
         self.style.theme_use("default")
@@ -40,10 +35,38 @@ class SearchResultsFrame(CTkXYFrame):
         self.style.map("Treeview.Heading",
                        background=[('active', '#3484F0')])
 
-    def print_search_results(self, part_number: int, search_results: list):
-        table = ttk.Treeview(self, columns=self.table_headers, show="headings", style="Treeview")
+    def clear(self):
+        for table in self.results_tables:
+            table.destroy()
+        self.results_tables.clear()
+        self.search_results_idx = 0
 
-        for i, header in enumerate(self.table_headers):
+    def beautify_search_results(self):
+        for _, product_info_list in self.data.all_search_results:
+            for product_info in product_info_list:
+                for key in product_info.keys():
+                    product_info[key] = product_info[key].strip()
+
+    def prepare_search_results(self, search_results):
+        all_keys = set(self.data.headers)
+
+        for dictionary in search_results:
+            missing_keys = all_keys - dictionary.keys()
+            for key in missing_keys:
+                dictionary[key] = ""
+
+        for dictionary in search_results:
+            for key in dictionary.keys():
+                if dictionary[key] == "":
+                    dictionary[key] = " "
+
+    def print_search_results(self):
+        part_number, search_results = self.data.all_search_results[self.search_results_idx]
+        self.search_results_idx += 1
+
+        table = ttk.Treeview(self, columns=self.data.headers, show="headings", style="Treeview")
+
+        for i, header in enumerate(self.data.headers):
             table.heading(i, text=header)
             if header in ["QTY", "price", "condition"]:
                 table.column(i, anchor=CENTER, width=100)
@@ -58,23 +81,24 @@ class SearchResultsFrame(CTkXYFrame):
         if len(search_results) == 0:
             table.insert('', "end", values=[f"{part_number}" if key == "part number" else
                                             ("No such part" if key == "description" else "") for key in
-                                            self.table_headers], tags=("odd",))
+                                            self.data.headers], tags=("odd",))
             rows_num = 1
         else:
+            self.beautify_search_results()
             self.prepare_search_results(search_results)
 
             for index, dictionary in enumerate(sorted(search_results, key=lambda d: d["vendor"])):
-                for i in range(len(self.data.websites_to_search)):
-                    if self.data.websites_names[i].lower() in dictionary["vendor"] and (
-                            not self.data.websites_to_search[i]):
+                for website_name in self.data.websites_names:
+                    if website_name.lower() in dictionary["vendor"] and not self.data.websites_to_search[website_name]:
                         break
                 else:
-                    for i, (_, checker) in enumerate(self.data.conditions_checker.items()):
-                        if self.data.conditions_to_search[i] and checker(dictionary["condition"]):
+                    for i in range(len(self.data.conditions_to_search)):
+                        if self.data.conditions_to_search[i] and self.data.conditions_checkers[i][1](
+                                dictionary["condition"]):
                             rows_num += 1
                             table.insert('', "end", tags=("odd" if rows_num % 2 == 1 else "even",),
                                          values=[self.wrap(dictionary[key], table.column(i, "width")) for key in
-                                                 self.table_headers])
+                                                 self.data.headers])
                             break
 
         if rows_num != 0:
@@ -90,45 +114,9 @@ class SearchResultsFrame(CTkXYFrame):
             self.results_tables.append(table)
 
     def update_search_results(self, _=None):
-        for table in self.results_tables:
-            table.destroy()
-        self.results_tables.clear()
-
-        for part_number, search_results in self.all_search_results.items():
-            self.print_search_results(part_number, search_results)
-
-    def create_csv(self):
-        moment = strftime("%Y-%b-%d__%H_%M_%S", localtime())
-        with open(f"out_{moment}.csv", "w") as out:
-            writer = DictWriter(out, fieldnames=self.table_headers)
-            writer.writeheader()
-
-            for part_number, search_results in self.all_search_results.items():
-                self.prepare_search_results(search_results)
-
-                for dictionary in sorted(search_results, key=lambda d: d["vendor"]):
-                    for i in range(len(self.data.websites_to_search)):
-                        if self.data.websites_names[i].lower() in dictionary["vendor"] and (
-                                not self.data.websites_to_search[i]):
-                            break
-                    else:
-                        for i, (_, checker) in enumerate(self.data.conditions_checker.items()):
-                            if self.data.conditions_to_search[i] and checker(dictionary["condition"]):
-                                writer.writerow(dictionary)
-                                break
-
-    def prepare_search_results(self, search_results):
-        all_keys = set(self.table_headers)
-
-        for dictionary in search_results:
-            missing_keys = all_keys - dictionary.keys()
-            for key in missing_keys:
-                dictionary[key] = ""
-
-        for dictionary in search_results:
-            for key in dictionary.keys():
-                if dictionary[key] == "":
-                    dictionary[key] = " "
+        self.clear()
+        for _ in range(len(self.data.all_search_results)):
+            self.print_search_results()
 
     @staticmethod
     def copy_from_treeview(table):

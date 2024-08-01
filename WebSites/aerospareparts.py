@@ -1,177 +1,133 @@
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as ec
-from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
-from subprocess import CREATE_NO_WINDOW
+from bs4 import BeautifulSoup
+from copy import deepcopy
+from Logic.data_file import Status
+from Logic.parser import ParserRequests
+import re
 
 
-class Aerospareparts:
+class Aerospareparts(ParserRequests):
     def __init__(self):
-        options = webdriver.ChromeOptions()
-        options.add_argument("--headless")
-        options.add_experimental_option("excludeSwitches", ["enable-logging"])
+        super().__init__()
 
-        chrome_service = webdriver.ChromeService()
-        chrome_service.creation_flags = CREATE_NO_WINDOW
-
-        self.driver = webdriver.Chrome(options=options, service=chrome_service)
-
-        self.delay = 20
-
-        self.logged_in = False
-        self.status = "OK"
-
-    def __del__(self):
-        self.driver.quit()
-
-    def login_function(self, login, password):
-        self.driver.delete_all_cookies()
-        try:
-            self.driver.get("https://aerospareparts.com/Utilisateur/Login")
-        except TimeoutException:
-            self.status = "Time error"
-            return self.status
-        except WebDriverException:
-            self.status = "Connection error"
+    def login_function(self, login: str, password: str) -> Status:
+        login_url = "https://aerospareparts.com/Utilisateur/Login"
+        if not self.request_wrapper(self.session.get, url=login_url):
             return self.status
 
-        try:
-            input_user_name = self.driver.find_element(By.XPATH, "//input[@name='UserName']")
-            input_password = self.driver.find_element(By.XPATH, "//input[@name='Password']")
-            login_button = self.driver.find_element(By.XPATH, "//div[@class='form-horizontal']/input")
-        except NoSuchElementException:
-            self.status = "Login error"
+        page = BeautifulSoup(self.response.text, "lxml")
+        token = page.select_one("input[name='__RequestVerificationToken']")["value"]
+
+        login_data = {
+            "__RequestVerificationToken": token,
+            "UserName": login,
+            "Password": password,
+        }
+
+        if not self.request_wrapper(self.session.post, url=login_url, data=login_data):
+            return self.status
+
+        page = BeautifulSoup(self.response.text, "lxml")
+        error_notification = page.select_one("div[class='validation-summary-errors text-danger']")
+
+        if error_notification is not None:
+            self.logged_in = False
+            self.status = Status.Login_error
         else:
-            input_user_name.send_keys(login)
-            input_password.send_keys(password)
-
-            login_button.click()
             self.logged_in = True
-            self.status = "OK"
-
-            try:
-                self.driver.find_element(By.XPATH,
-                                         "//li[text()='The user name, the email or the password is incorrect.']")
-                self.status = "Login error"
-                self.logged_in = False
-            except NoSuchElementException:
-                pass
-        finally:
-            return self.status
-
-    def search_part(self, number, search_results):
-        if not self.logged_in:
-            self.status = "Login error"
-            return self.status
-
-        self.status = "OK"
-
-        try:
-            self.driver.get("https://aerospareparts.com/PartNumber/" + number)
-        except WebDriverException:
-            self.status = "Connection error"
-            return self.status
-
-        titles = [title.text.replace(number, '').replace(':', '').strip() for title in
-                  self.driver.find_elements(By.XPATH, "//h4[@class='Mine']")]
-        tables = self.driver.find_elements(By.XPATH, "//table[@class='Grid']")
-
-        quote_request_refs = {}
-
-        try:
-            part_id = self.driver.find_element(By.XPATH,
-                                               "//span[contains(text(), 'Part Number')]/following::span").text
-            description = self.driver.find_element(By.XPATH, "//span[contains(text(), 'Description')]"
-                                                             "/following::span").text.lower()
-        except NoSuchElementException:
-            part_id = number
-            description = ''
-
-        for i in range(len(tables)):
-            title = titles[i]
-            try:
-                quote_request_refs[title] = tables[i].find_element(
-                    By.XPATH, ".//a[@class='AutoquoteActionLink']").get_attribute("href")
-            except NoSuchElementException:
-                if title == "on request":
-                    headers = [header.text for header in tables[i].find_elements(By.TAG_NAME, "th")]
-                    rows = tables[i].find_elements(By.XPATH, ".//tbody/tr")
-                    for row in rows:
-                        cols = row.find_elements(By.TAG_NAME, "td")
-                        search_results.append({
-                            "vendor": "aerospareparts.com" + " (" + title + ')',
-                            "part number": part_id,
-                            "description": description,
-                            "condition": cols[headers.index("CD")].text,
-                            "lead time": cols[headers.index("Std Leadtime")].text,
-                            "warehouse": cols[headers.index("Incoterms")].text
-                        })
-
-        for title, ref in quote_request_refs.items():
-            try:
-                self.driver.get(ref)
-
-                WebDriverWait(self.driver, self.delay).until(ec.element_to_be_clickable(
-                    (By.XPATH, "//input[@value='Quote now']")))
-            except TimeoutException:
-                self.status = "Time error"
-                return self.status
-
-            self.driver.find_element(By.XPATH, "//input[@value='Quote now']").click()
-
-            try:
-                condition = self.driver.find_element(By.XPATH, "//label[contains(text(), 'Condition')]"
-                                                               "/following::span[1]").text
-            except NoSuchElementException:
-                condition = ''
-
-            try:
-                qty = self.driver.find_element(By.XPATH, "//label[contains(text(), 'Stock available')]"
-                                                         "/following::span[1]").text
-            except NoSuchElementException:
-                qty = ''
-
-            try:
-                table = self.driver.find_element(By.XPATH, "//table[@class='Grid']")
-                names_cols = [el.text.strip() for el in table.find_elements(By.TAG_NAME, "th")]
-                for row in table.find_elements(By.XPATH, ".//tbody/tr"):
-                    cols = [el.text.strip() for el in row.find_elements(By.TAG_NAME, "td")]
-
-                    location = cols[names_cols.index("Incoterms")]
-                    lead_time = cols[names_cols.index("LT")]
-                    price = cols[names_cols.index("Unit price")]
-
-                    search_results.append({
-                        "vendor": f"aerospareparts ({title})",
-                        "part number": part_id,
-                        "description": description,
-                        "QTY": qty,
-                        "price": price,
-                        "condition": condition,
-                        "lead time": lead_time,
-                        "warehouse": location
-                    })
-            except NoSuchElementException:
-                if title == "on request":
-                    self.driver.get("https://aerospareparts.com/PartNumber/" + number)
-
-                    table = self.driver.find_elements(By.XPATH, "//table[@class='Grid']")[titles.index(title)]
-
-                    headers = [header.text for header in table.find_elements(By.TAG_NAME, "th")]
-                    rows = table.find_elements(By.XPATH, ".//tbody/tr")
-                    for row in rows:
-                        cols = row.find_elements(By.TAG_NAME, "td")
-                        search_results.append({
-                            "vendor": f"aerospareparts ({title})",
-                            "part number": part_id,
-                            "description": description,
-                            "condition": cols[headers.index("CD")].text,
-                            "lead time": cols[headers.index("Std Leadtime")].text,
-                            "warehouse": cols[headers.index("Incoterms")].text
-                        })
+            self.status = Status.OK
 
         return self.status
 
-    def change_delay(self, new_delay):
-        self.delay = new_delay
+    def search_part(self, number: str, search_results: list) -> Status:
+        if not self.logged_in:
+            self.status = Status.Login_error
+            return self.status
+
+        self.status = Status.OK
+
+        if not self.request_wrapper(self.session.get, url=("https://aerospareparts.com/PartNumber/" + number)):
+            return self.status
+
+        page = BeautifulSoup(self.response.text, "lxml")
+        if page.select_one("div[class='alert alert-warning fade in']") is not None:
+            self.logged_in = False
+            self.status = Status.Login_error
+            return self.status
+
+        self.product_info["part number"] = page.find("span", string="Part Number :").next_sibling.text
+        self.product_info["description"] = page.find("span", string="Description :").next_sibling.text
+        self.product_info["QTY"] = qty.next_sibling.text if ((
+            qty := page.find("span", string="Stock available :"))) is not None else ""
+
+        titles = [title.next_sibling.text.strip().replace(" :", "") for title in
+                  page.select("h4[class='Mine'] > label")]
+        tables = page.select("table[class='Grid']")
+        quote_request_refs: list[(str, dict[str, str])] = []
+        refs_set = set()
+        for i in range(len(tables)):
+            title = titles[i]
+            refs = [elem.get("href") for elem in tables[i].select("a[class='AutoquoteActionLink']")]
+            if len(refs) == 0:
+                if title == "on request":
+                    table_headers = [table_header.text.strip() for table_header in tables[i].select("th")]
+                    for row in tables[i].select("tbody > tr"):
+                        cols = row.select("td")
+                        self.product_info["vendor"] = self.vendor + f" ({title})"
+                        self.product_info["condition"] = cols[table_headers.index("CD")].text
+                        self.product_info["warehouse"] = cols[table_headers.index("Incoterms")].text
+                        self.product_info["lead time"] = cols[table_headers.index("Std Leadtime")].text
+                        try:
+                            self.product_info["QTY"] = cols[table_headers.index("Stk qty")].text.split('*')[0]
+                        except ValueError:
+                            pass
+
+                        search_results.append(deepcopy(self.product_info))
+            else:
+                for ref in refs:
+                    a = ref.find("StockLocation")
+                    b = ref.find('&', a)
+                    copy_ref = ref.replace(ref[a:b+1], "")
+                    if copy_ref not in refs_set:
+                        refs_set.add(copy_ref)
+                        if not self.request_wrapper(self.session.get, url=("https://aerospareparts.com/" + ref)):
+                            return self.status
+
+                        page = BeautifulSoup(self.response.text, "lxml")
+                        payload = {
+                            "PN": page.select_one("input[name='PN']")["value"],
+                            "Description": page.select_one("input[name='Description']")["value"],
+                            "UOM": page.select_one("input[name='UOM']")["value"],
+                            "COND": page.select_one("input[name='COND']")["value"],
+                            "Country": page.select_one("input[name='Country']")["value"],
+                            "StockAvailable": page.select_one("input[name='StockAvailable']")["value"],
+                            "StockAvailableToDisplay": page.select_one("input[name='StockAvailableToDisplay']")[
+                                "value"],
+                            "LT": page.select_one("input[name='LT']")["value"],
+                            "RequestedQuantity": "1",
+                            "submit": "Quote now",
+                        }
+                        quote_request_refs.append((title, payload))
+
+        for title, payload in quote_request_refs:
+            if not self.request_wrapper(self.session.post, url="https://aerospareparts.com/PN/InstantQuote",
+                                        data=payload):
+                return self.status
+
+            page = BeautifulSoup(self.response.text, "lxml")
+            table = page.select_one("table[class='Grid']")
+            table_headers = [table_header.text.strip() for table_header in table.select("th")]
+            for row in table.select("tbody > tr"):
+                cols = row.select("td")
+                self.product_info["vendor"] = self.vendor + f" ({title})"
+                self.product_info["condition"] = page.find("label", string=re.compile("Condition")).find_next_sibling(
+                    "span").text
+                self.product_info["QTY"] = qty.find_next_sibling("span").text if ((
+                    qty := page.find("label", string=re.compile("Stock available")))) is not None else re.sub(
+                    "[^0-9]", "", cols[table_headers.index("QTY")].text.split()[0])
+                self.product_info["price"] = cols[table_headers.index("Unit price")].text
+                self.product_info["lead time"] = cols[table_headers.index("LT")].text.replace('*', "")
+                self.product_info["warehouse"] = cols[table_headers.index("Incoterms")].text
+
+                search_results.append(deepcopy(self.product_info))
+
+        return self.status

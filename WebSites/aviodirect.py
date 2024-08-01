@@ -1,54 +1,37 @@
 from bs4 import BeautifulSoup
-from requests import Session
+from copy import deepcopy
+from Logic.data_file import Status
+from Logic.parser import ParserRequests
 
 
-class Aviodirect:
+class Aviodirect(ParserRequests):
     def __init__(self):
-        self.session = Session()
+        super().__init__()
 
-        self.url = "https://aviodirect.com/"
-
+    def login_function(self, login: str, password: str) -> Status:
         self.logged_in = True
-        self.status = "OK"
-
-    def __del__(self):
-        self.session.close()
-
-    def login_function(self, login, password):
+        self.status = Status.OK
         return self.status
 
-    def search_part(self, number, search_results):
-        self.status = "OK"
-
-        if not self.logged_in:
-            self.status = "Login error"
+    def search_part(self, number: str, search_results: list) -> Status:
+        params = {"post_type": "product", "product_cat": 0, "s": number}
+        headers = {"user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+                                 "(KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36"}
+        if not self.request_wrapper(self.session.get, url="https://aviodirect.com/", params=params, headers=headers):
             return self.status
 
-        try:
-            page = self.session.get(self.url, params={"post_type": "product", "product_cat": 0, "s": number}, headers={
-                "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) "
-                              "Chrome/102.0.0.0 Safari/537.36"
-            })
-        except ConnectionError:
-            self.status = "Connection error"
-            return self.status
+        page = BeautifulSoup(self.response.text, "lxml")
 
-        bs = BeautifulSoup(page.text, "lxml")
-
-        part_title = bs.find("h1", {"class": "product_title entry-title"})
+        part_title = page.select_one("h1[class='product_title entry-title']")
         if part_title is None:
             return self.status
 
-        part_id, description = part_title.text.split(" | ") if '|' in part_title.text else part_title.text.split(" – ")
-        price = bs.find("p", {"class": "price"}).text
-        condition = bs.find("div", {"class": "woocommerce-product-details__short-description"}).text
+        self.product_info["part number"], self.product_info["description"] = part_title.text.split(
+            " | ") if '|' in part_title.text else part_title.text.split(" – ")
+        self.product_info["price"] = page.select_one("p[class='price']").text
+        self.product_info["condition"] = page.select_one(
+            "div[class='woocommerce-product-details__short-description']").text
 
-        search_results.append({
-            "vendor": "aviodirect",
-            "part number": number,
-            "description": description,
-            "price": price,
-            "condition": condition
-        })
+        search_results.append(deepcopy(self.product_info))
 
         return self.status

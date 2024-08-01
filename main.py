@@ -2,8 +2,9 @@ from GUI import app
 
 
 def main():
-    appl = app.App()
-    appl.mainloop()
+    root = app.Root()
+    root.mainloop()
+    root.destroy()
 
 
 if __name__ == "__main__":

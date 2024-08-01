@@ -1,65 +1,53 @@
 from bs4 import BeautifulSoup
-import requests
+from copy import deepcopy
+from Logic.data_file import Status
+from Logic.parser import ParserRequests
 
 
-class Ajweventory:
+class Ajweventory(ParserRequests):
     def __init__(self):
-        self.session = requests.Session()
+        super().__init__()
 
-        self.url = "https://eventory.ajw-group.com/a/search"
-
+    def login_function(self, login: str, password: str) -> Status:
         self.logged_in = True
-        self.status = "OK"
-
-    def __del__(self):
-        self.session.close()
-
-    def login_function(self, login, password):
-        self.status = "OK"
+        self.status = Status.OK
         return self.status
 
-    def search_part(self, number, search_results):
-        self.status = "OK"
-
+    def search_part(self, number: str, search_results: list) -> Status:
         page_number = 1
-
         exact_match = True
         while exact_match:
-            try:
-                page = self.session.get(self.url, params={"q": number, "page": page_number})
-            except ConnectionError:
-                self.status = "Connection error"
+            if not self.request_wrapper(self.session.get, url="https://eventory.ajw-group.com/a/search",
+                                        params={"q": number, "page": page_number}):
                 return self.status
 
-            bs = BeautifulSoup(page.text, "lxml")
-
-            part_grid = bs.find("div", {"class": "grid-uniform"})
-            if part_grid is None or part_grid.text == "\n":
+            page = BeautifulSoup(self.response.text, "lxml")
+            parts = page.select("div[class='grid-uniform'] > div")
+            if len(parts) == 0:
                 break
-
-            parts = part_grid.find_all("div", {"class": "grid-item"})
 
             for part in parts:
                 ref = part.find("a").get("href")
-                part_page = self.session.get("https://eventory.ajw-group.com" + ref)
-                part_bs = BeautifulSoup(part_page.text, "lxml")
+                if not self.request_wrapper(self.session.get, url=("https://eventory.ajw-group.com" + ref)):
+                    return self.status
 
-                part_id = part_bs.find("h1", {"itemprop": "name"}).text
-                if part_id != number:
+                page = BeautifulSoup(self.response.text, "lxml")
+
+                part_number = page.select_one("h1[itemprop='name']").text
+                if part_number != number:
                     exact_match = False
                     break
 
-                price = part_bs.find("span", {"id": "displayprice"})
-                qty = part_bs.find("div", {"id": "variant-inventory"})
-                condition = part_bs.find(lambda tag: tag.name == "p" and "Condition" in tag.text)
+                self.product_info["part number"] = part_number
+                self.product_info["description"] = page.select_one("div[itemprop='description'] > p > strong").text
+                self.product_info["price"] = price.text if (price := page.select_one("span[id='displayprice']")) else ""
+                self.product_info["QTY"] = qty.text.split()[qty.text.split().index("have") + 1] if ((
+                    qty := page.select_one("div[id='variant-inventory']"))) is not None else ""
+                self.product_info["condition"] = condition.text.split(": ")[1] if ((
+                    condition := page.find(
+                        lambda tag: tag.name == "p" and "Condition" in tag.text))) is not None else ""
 
-                search_results.append({
-                    "vendor": "ajweventory",
-                    "part number": part_id,
-                    "QTY": qty.text.split()[qty.text.split().index("have") + 1] if qty else '',
-                    "price": price.text.strip() if price else '',
-                    "condition": condition.text.split(": ")[1].lower() if condition else '',
-                })
+                search_results.append(deepcopy(self.product_info))
 
             page_number += 1
 

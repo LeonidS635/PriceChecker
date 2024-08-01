@@ -1,67 +1,64 @@
+import customtkinter
 from concurrent.futures import Future, ThreadPoolExecutor
+from GUI.captcha_window import CaptchaWindow
 from Logic.data_file import DataClass
-from GUI import captcha_window, passwords_window
-from GUI.frames import Frames
+from Logic.parser import Parser
 from json import load
 from os.path import exists
 from typing import Callable
 
 
 class Connector:
-    def __init__(self, data: DataClass, frames: Frames, callback: Callable[[Future, int], None]):
+    def __init__(self, master, data: DataClass, callback: Callable[[Future, str], None]):
         self.callback = callback
         self.data = data
-        self.frames = frames
+        self.master = master
 
+        self.captcha_code = customtkinter.StringVar()
         self.captcha_form = None
-        self.passwords_form = None
-
-        self.passwords_file = "passwords.json"
 
     def connect(self):
-        if not exists(self.passwords_file):
-            if self.passwords_form is None or not self.passwords_form.winfo_exists():
-                self.passwords_form = passwords_window.PasswordsWindow(self.data, self.passwords_file)
-                self.passwords_form.grab_set()
-            else:
-                self.passwords_form.focus()
+        if not exists(self.data.passwords_file):
+            self.master.event_generate("<<CreatePasswordsForm>>")
         else:
             self.connect_all()
 
     def reconnect(self):
-        self.data.logged_in_websites = [False for _ in range(len(self.data.logged_in_websites))]
-        self.frames.websites_list_frame.deselect_checkboxes()
+        for website in self.data.logged_in_websites.keys():
+            self.data.logged_in_websites[website] = False
+        for parser in self.data.parsers:
+            parser.logged_in = False
+        self.master.event_generate("<<DeselectAllCheckboxes>>")
         self.connect()
 
     def connect_all(self):
-        with open(self.passwords_file, "r") as file:
+        with open(self.data.passwords_file, "r") as file:
             login_data = load(file)
 
         with ThreadPoolExecutor() as executor:
-            for i, parser in enumerate(self.data.parsers):
-                if not self.data.logged_in_websites[i]:
-                    self.data.master.event_generate(f"<<StartProgressBar-{i}>>")
+            for parser in self.data.parsers:
+                website_name = parser.__class__.__name__
+                if not self.data.logged_in_websites[website_name]:
+                    self.master.event_generate(f"<<StartProgressBar-{website_name}>>")
 
-                    if self.data.websites_names[i] == "Dasi":
-                        self.data.master.event_generate("<<LoginDasi>>")
+                    if website_name in self.data.websites_names_with_captcha_for_login:
+                        self.master.event_generate(f"<<CreateCaptchaForm-{website_name}>>")
+                        future = executor.submit(self.login_with_captcha_code,
+                                                 parser=parser,
+                                                 login=login_data[website_name]["login"],
+                                                 password=login_data[website_name]["password"])
+                        future.add_done_callback(lambda f, website=website_name: self.callback(f, website))
                     else:
                         future = executor.submit(parser.login_function,
-                                                 login_data[self.data.websites_names[i]]["login"],
-                                                 login_data[self.data.websites_names[i]]["password"])
-                        future.add_done_callback(lambda f, number=i: self.callback(f, number))
+                                                 login=login_data[website_name]["login"],
+                                                 password=login_data[website_name]["password"])
+                        future.add_done_callback(lambda f, website=website_name: self.callback(f, website))
 
-    def login_with_captcha(self, website_name):
-        with open(self.passwords_file, "r") as file:
-            login_data = load(file)
+    def create_captcha_form(self, website_name: str):
+        self.captcha_form = CaptchaWindow(master=self.master, data=self.data, website_name=website_name,
+                                          captcha_code=self.captcha_code)
+        self.captcha_form.wait_visibility()
 
-        login = login_data[website_name]["login"]
-        password = login_data[website_name]["password"]
-        website_index = self.data.websites_names.index(website_name)
-
-        if self.captcha_form is None or not self.captcha_form.winfo_exists():
-            self.captcha_form = captcha_window.CaptchaWindow(data=self.data, frames=self.frames,
-                                                             website_index=website_index, login=login,
-                                                             password=password)
-            self.captcha_form.grab_set()
-        else:
-            self.captcha_form.focus()
+    def login_with_captcha_code(self, parser: Parser, login: str, password: str):
+        self.captcha_form.wait_variable(self.captcha_code)
+        return parser.login_function(login=login, password=password, captcha_code=self.captcha_code.get())

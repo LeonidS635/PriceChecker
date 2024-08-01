@@ -1,28 +1,14 @@
 from bs4 import BeautifulSoup
-from requests import Session
+from copy import deepcopy
+from Logic.data_file import Status
+from Logic.parser import ParserRequests
 
 
-class Aircostcontrol:
+class Aircostcontrol(ParserRequests):
     def __init__(self):
-        self.session = Session()
+        super().__init__()
 
-        self.url = "https://ecommerce.aircostcontrol.com/search"
-
-        self.logged_in = True
-        self.status = "OK"
-
-    def __del__(self):
-        self.session.close()
-
-    def login_function(self, login, password):
-        log_in_link = "https://ecommerce.aircostcontrol.com/login"
-
-        try:
-            auth = self.session.get(log_in_link)
-        except ConnectionError:
-            self.status = "Connection error"
-            return self.status
-
+    def login_function(self, login: str, password: str) -> Status:
         login_data = {
             "back": "",
             "email": login,
@@ -30,22 +16,23 @@ class Aircostcontrol:
             "submitLogin": 1
         }
 
-        login_page = self.session.post(log_in_link, data=login_data)
-        login_bs = BeautifulSoup(login_page.text, "lxml")
+        if not self.request_wrapper(self.session.post, url="https://ecommerce.aircostcontrol.com/login",
+                                    data=login_data):
+            return self.status
 
-        if not login_bs.find(string="Authentication failed."):
-            self.logged_in = True
-            self.status = "OK"
+        page = BeautifulSoup(self.response.text, "lxml")
+        if page.find(string="Authentication failed."):
+            self.logged_in = False
+            self.status = Status.Login_error
         else:
-            self.status = "Login error"
+            self.logged_in = True
+            self.status = Status.OK
 
         return self.status
 
-    def search_part(self, number, search_results):
-        self.status = "OK"
-
+    def search_part(self, number: str, search_results: list) -> Status:
         if not self.logged_in:
-            self.status = "Login error"
+            self.status = Status.Login_error
             return self.status
 
         params = {
@@ -56,51 +43,25 @@ class Aircostcontrol:
             "search_query": number
         }
 
-        try:
-            page = self.session.get(self.url, params=params)
-        except ConnectionError:
-            self.status = "Connection error"
+        if not self.request_wrapper(self.session.get, url="https://ecommerce.aircostcontrol.com/search", params=params):
             return self.status
 
-        if page.status_code != 200:
+        page = BeautifulSoup(self.response.text, "lxml")
+        ref = page.select_one("a[class='btn btn-primary w-100 mb-2']")
+
+        if ref is None or not self.request_wrapper(self.session.get, url=ref["href"]):
             return self.status
 
-        bs = BeautifulSoup(page.text, "lxml")
+        page = BeautifulSoup(self.response.text, "lxml")
+        self.product_info["part number"] = page.find("label", string="PN:").find_next_sibling().text
+        self.product_info["description"] = page.find("label", string="Description:").next_sibling.text
+        self.product_info["condition"] = page.find("label", string="Condition:").find_next_sibling().text
+        self.product_info["QTY"] = qty.text if ((
+            qty := page.select_one("span[class='hidden-in-product-pp']"))) is not None else ""
+        self.product_info["price"] = price.find_all("td")[1].text if ((
+            price := page.select_one("tr[data-discount-type='amount']"))) is not None else ""
+        self.product_info["lead time"] = page.find("label", string="Lead-time:").find_next_sibling().text
 
-        ref = bs.find("a", {"class": "btn btn-primary w-100 mb-2"})
-        if ref is not None:
-            ref = ref["href"]
-            page = self.session.get(ref)
-        else:
-            return self.status
-
-        bs = BeautifulSoup(page.text, "lxml")
-
-        part_number = bs.find("label", string="PN:").find_next_sibling().text
-        description = bs.find("label", string="Description:").next_sibling.text.strip()
-        lead_time = bs.find("label", string="Lead-time:").find_next_sibling().text.strip()
-        condition = bs.find("label", string="Condition:").find_next_sibling().text.strip()
-
-        qty = bs.find("span", {"class": "hidden-in-product-pp"})
-        if qty is not None:
-            qty = qty.text
-        else:
-            qty = ""
-
-        price = bs.find("tr", {"data-discount-type": "amount"})
-        if price is not None:
-            price = price.find_all("td")[1].text
-        else:
-            price = ""
-
-        search_results.append({
-            "vendor": "aircostcontrol",
-            "part number": part_number,
-            "description": description,
-            "QTY": qty,
-            "price": price,
-            "condition": condition,
-            "lead time": lead_time
-        })
+        search_results.append(deepcopy(self.product_info))
 
         return self.status

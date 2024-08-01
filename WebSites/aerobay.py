@@ -1,39 +1,16 @@
 from bs4 import BeautifulSoup
 from copy import deepcopy
-from requests import Response, Session
-from requests.exceptions import RequestException, Timeout
-from typing import Callable
+from Logic.data_file import Status
+from Logic.parser import ParserRequests
 
 
-class Aerobay:
+class Aerobay(ParserRequests):
     def __init__(self):
-        self.session = Session()
+        super().__init__()
 
-        self.delay = 20
-        self.logged_in = False
-        self.response = None
-        self.status = "OK"
-
-    def __del__(self):
-        self.session.close()
-
-    def request_wrapper(self, request: Callable[[], Response]) -> bool:
-        try:
-            self.response = request()
-            self.response.raise_for_status()
-        except Timeout:
-            self.status = "Time error"
-            return False
-        except RequestException:
-            self.status = "Connection error"
-            return False
-        else:
-            self.status = "OK"
-            return True
-
-    def login_function(self, login: str, password: str) -> str:
+    def login_function(self, login: str, password: str) -> Status:
         login_url = "https://www.aero-bay.com"
-        if not self.request_wrapper(lambda: self.session.get(login_url, timeout=self.delay)):
+        if not self.request_wrapper(self.session.get, url=login_url):
             return self.status
 
         page = BeautifulSoup(self.response.text, 'lxml')
@@ -45,69 +22,45 @@ class Aerobay:
             "password": password
         }
 
-        if not self.request_wrapper(
-                lambda: self.session.post(login_url + "/j_spring_security_check", data=login_data, timeout=self.delay)):
+        if not self.request_wrapper(self.session.post, url=(login_url + "/j_spring_security_check"), data=login_data):
             return self.status
-        page = BeautifulSoup(self.response.text, "lxml")
 
+        page = BeautifulSoup(self.response.text, "lxml")
         if not page.find(string="Email or password is incorrect"):
             self.logged_in = True
-            self.status = "OK"
+            self.status = Status.OK
         else:
-            self.status = "Login error"
+            self.logged_in = False
+            self.status = Status.Login_error
 
         return self.status
 
-    def search_part(self, number: str, search_results: list) -> str:
+    def search_part(self, number: str, search_results: list) -> Status:
         if not self.logged_in:
-            self.status = "Login error"
+            self.status = Status.Login_error
             return self.status
 
-        product_info = {
-            "vendor": "aerobay",
-            "part number": "",
-            "description": "",
-            "QTY": "",
-            "price": "",
-            "condition": "",
-            "lead time": "",
-            "warehouse": "",
-            "other information": ""
-        }
-
-        def reset_product_info():
-            product_info.clear()
-            product_info["vendor"] = "aerobay"
-
-        search_url = "https://www.aero-bay.com/q"
-
-        if not self.request_wrapper(
-                lambda: self.session.get(search_url, params={"searchType": "PART_NUMBER", "item": number},
-                                         timeout=self.delay)):
+        if not self.request_wrapper(self.session.get, url="https://www.aero-bay.com/q",
+                                    params={"searchType": "PART_NUMBER", "item": number}):
             if self.response.status_code == 404:
-                self.status = "OK"
+                self.status = Status.OK
             return self.status
 
         page = BeautifulSoup(self.response.text, "lxml")
-
         parts_list = page.select_one("div[id='resultLists']")
         if parts_list is not None:
             for part in parts_list.select("div[class='parent_product_box_list']"):
                 description, condition, qty, _, price, _, lead_time, _, _ = part.select(
                     "div[class*='product_infos_inside_product_box_list']")
 
-                reset_product_info()
-                product_info["part number"] = part.select_one("strong").text
-                product_info["description"] = description.select_one("p").text.lower()
-                product_info["QTY"] = qty.select_one("strong").text
-                product_info["price"] = '$' + price_parts[1].text + '.' + price_parts[2].text if (
+                self.product_info["part number"] = part.select_one("strong").text
+                self.product_info["description"] = description.select_one("p").text
+                self.product_info["QTY"] = qty.select_one("strong").text
+                self.product_info["price"] = '$' + price_parts[1].text + '.' + price_parts[2].text if (
                     price_parts := price.select_one("span > span").findChildren()) else ""
-                product_info["condition"] = condition.select_one("span").text
-                product_info["lead time"] = lead_time.text.strip()
+                self.product_info["condition"] = condition.select_one("span").text
+                self.product_info["lead time"] = lead_time.text
 
-                search_results.append(deepcopy(product_info))
+                search_results.append(deepcopy(self.product_info))
 
         return self.status
-
-    def change_delay(self, new_delay):
-        self.delay = new_delay

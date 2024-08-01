@@ -1,37 +1,15 @@
 from copy import deepcopy
-from requests import Session, Response
-from requests.exceptions import Timeout, RequestException
-from typing import Callable
+from Logic.data_file import Status
+from Logic.parser import ParserRequests
 
 
-class Satair:
+class Satair(ParserRequests):
     def __init__(self):
-        self.session = Session()
+        super().__init__()
 
         self.auth_info = {}
-        self.delay = 20
-        self.logged_in = False
-        self.response = None
-        self.status = "OK"
 
-    def __del__(self):
-        self.session.close()
-
-    def request_wrapper(self, request: Callable[[], Response]) -> bool:
-        try:
-            self.response = request()
-            self.response.raise_for_status()
-        except Timeout:
-            self.status = "Time error"
-            return False
-        except RequestException:
-            self.status = "Connection error"
-            return False
-        else:
-            self.status = "OK"
-            return True
-
-    def login_function(self, login: str, password: str) -> str:
+    def login_function(self, login: str, password: str) -> Status:
         login_url = "https://www.satair.com/api/login"
         payload = {
             "userId": login,
@@ -39,13 +17,13 @@ class Satair:
             "rememberMe": False
         }
 
-        if not self.request_wrapper(lambda: self.session.post(login_url, json=payload, timeout=self.delay)):
+        if not self.request_wrapper(self.session.post, url=login_url, json=payload):
             return self.status
 
         data = self.response.json()
 
         if "Notification" in data.keys():
-            self.status = "Login error"
+            self.status = Status.Login_error
             self.logged_in = False
         else:
             self.auth_info = {
@@ -54,38 +32,22 @@ class Satair:
                 "globalId": data["Authentication"]["GlobalId"]
             }
 
-            self.status = "OK"
+            self.status = Status.OK
             self.logged_in = True
 
         return self.status
 
-    def search_part(self, number: str, search_results: list) -> str:
+    def search_part(self, number: str, search_results: list) -> Status:
         if not self.logged_in:
-            self.status = "Login error"
+            self.status = Status.Login_error
             return self.status
-
-        product_info = {
-            "vendor": "satair",
-            "part number": "",
-            "description": "",
-            "QTY": "",
-            "price": "",
-            "condition": "",
-            "lead time": "",
-            "warehouse": "",
-            "other information": ""
-        }
-
-        def reset_product_info():
-            product_info.clear()
-            product_info["vendor"] = "satair"
 
         add_info_url = "https://www.satair.com/api/product/additionalinfo/"
         interchanges_url = "https://www.satair.com/api/product/interchangeable"
         plants_url = "https://www.satair.com/api/product/plants/"
         offer_search_url = f"https://www.satair.com/api/offersearch?urlParams=q%3D{number}"
 
-        if not self.request_wrapper(lambda: self.session.get(offer_search_url, timeout=self.delay)):
+        if not self.request_wrapper(self.session.get, url=offer_search_url):
             return self.status
 
         products = self.response.json()["Data"]["Products"]
@@ -106,9 +68,7 @@ class Satair:
             if not info_params["productPriceRequests"]:
                 return self.status
 
-            if not self.request_wrapper(
-                    lambda: self.session.post(add_info_url, json=info_params, cookies=self.auth_info,
-                                              timeout=self.delay)):
+            if not self.request_wrapper(self.session.post, url=add_info_url, json=info_params, cookies=self.auth_info):
                 return self.status
 
             add_info_products = self.response.json()
@@ -118,23 +78,23 @@ class Satair:
             for i in range(batch_index * batch_size, min(products_number, (batch_index + 1) * batch_size)):
                 batch_int_index = i - batch_index * batch_size
 
-                reset_product_info()
-                product_info["part number"] = products[i]["Sku"]
-                product_info["description"] = products[i]["Name"].lower()
-                product_info["condition"] = products[i]["State"]
-                product_info["QTY"] = str(qty) if (
+                self.reset_product_info()
+                self.product_info["part number"] = products[i]["Sku"]
+                self.product_info["description"] = products[i]["Name"]
+                self.product_info["condition"] = products[i]["State"]
+                self.product_info["QTY"] = str(qty) if (
                     qty := add_info_products["Data"][batch_int_index]["RemainingOfferQuantity"]) else ""
-                product_info["price"] = '$' + price if (
-                    (price := add_info_products["Data"][batch_int_index]["Price"].get("Value")) is not None and
-                    price != "0") else ""
-                product_info["lead time"] = lead_time if (
-                    (lead_time := add_info_products["Data"][batch_int_index]["StockIndication"]) != "N/A") else ""
-                product_info["warehouse"] = warehouse_dict["Name"] if (
-                    (warehouse_dict := add_info_products["Data"][batch_int_index].get("Warehouse")) is not None) else ""
+                self.product_info["price"] = '$' + price if (
+                        (price := add_info_products["Data"][batch_int_index]["Price"].get("Value")) is not None and
+                        price != "0") else ""
+                self.product_info["lead time"] = lead_time if (
+                        (lead_time := add_info_products["Data"][batch_int_index]["StockIndication"]) != "N/A") else ""
+                self.product_info["warehouse"] = warehouse_dict["Name"] if (
+                        (warehouse_dict := add_info_products["Data"][batch_int_index].get(
+                            "Warehouse")) is not None) else ""
 
-                if not self.request_wrapper(
-                        lambda: self.session.get(interchanges_url, data={"sku": product_info["part number"]},
-                                                 cookies=self.auth_info)):
+                if not self.request_wrapper(self.session.get, url=interchanges_url,
+                                            data={"sku": self.product_info["part number"]}, cookies=self.auth_info):
                     return self.status
 
                 interchanges_data = self.response.json()
@@ -143,26 +103,22 @@ class Satair:
                     for interchangeable in interchanges_data["Data"]:
                         interchanges_list.append(interchangeable["Sku"])
                 interchanges = " ; ".join(interchanges_list) if interchanges_list else ""
-                product_info["other information"] = f"interchanges: {interchanges}" if interchanges else ""
+                self.product_info["other information"] = f"interchanges: {interchanges}" if interchanges else ""
 
-                if not self.request_wrapper(
-                        lambda: self.session.get(plants_url + products[i]["Code"], cookies=self.auth_info,
-                                                 timeout=self.delay)):
+                if not self.request_wrapper(self.session.get, url=plants_url + products[i]["Code"],
+                                            cookies=self.auth_info):
                     return self.status
 
                 plants_data = self.response.json()
                 if plants_data and plants_data["Data"]["HasPlants"]:
                     for plant in plants_data["Data"]["Plants"]:
                         if plant["InStock"]:
-                            product_info["lead time"] = "In stock"
-                        product_info["QTY"] = str(plant["Quantity"])
-                        product_info["warehouse"] = plant["Warehouse"]
+                            self.product_info["lead time"] = "In stock"
+                        self.product_info["QTY"] = str(plant["Quantity"])
+                        self.product_info["warehouse"] = plant["Warehouse"]
 
-                        search_results.append(deepcopy(product_info))
+                        search_results.append(deepcopy(self.product_info))
                 else:
-                    search_results.append(deepcopy(product_info))
+                    search_results.append(deepcopy(self.product_info))
 
         return self.status
-
-    def change_delay(self, new_delay):
-        self.delay = new_delay

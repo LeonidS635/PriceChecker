@@ -1,61 +1,33 @@
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.common.exceptions import NoSuchElementException
-from subprocess import CREATE_NO_WINDOW
+from bs4 import BeautifulSoup
+from copy import deepcopy
+from Logic.data_file import Status
+from Logic.parser import ParserRequests
 
 
-class Primaaviation:
+class Primaaviation(ParserRequests):
     def __init__(self):
-        options = webdriver.ChromeOptions()
-        options.add_argument("--headless")
-        options.add_experimental_option("excludeSwitches", ["enable-logging"])
+        super().__init__()
 
-        chrome_service = webdriver.ChromeService()
-        chrome_service.creation_flags = CREATE_NO_WINDOW
-
-        self.driver = webdriver.Chrome(options=options, service=chrome_service)
-
-        self.delay = 20
-
-        self.status = "OK"
-
-    def __del__(self):
-        self.driver.quit()
-
-    def login_function(self, login, password):
-        try:
-            self.driver.get("https://primaaviation.com/inventory")
-        except ConnectionError:
-            self.status = "Connection error"
-            return self.status
-
+    def login_function(self, login: str, password: str) -> Status:
+        self.logged_in = True
+        self.status = Status.OK
         return self.status
 
-    def search_part(self, number, search_results):
-        self.status = "OK"
-
-        part_input = self.driver.find_element(By.XPATH, "//input[@id='srch']")
-        part_input.clear()
-        part_input.send_keys(number)
-
-        try:
-            res_table = self.driver.find_element(By.XPATH, "//table[@id='dTable']")
-        except NoSuchElementException:
+    def search_part(self, number: str, search_results: list) -> Status:
+        if not self.request_wrapper(self.session.get, url="https://primaaviation.com/inventory"):
             return self.status
 
-        for part in res_table.find_elements(By.XPATH, ".//tbody/tr"):
-            columns = part.find_elements(By.XPATH, ".//td")
-            if len(columns) == 1:
-                break
+        page = BeautifulSoup(self.response.text, "lxml")
+        for part in page.css.iselect("table[id='dTable'] > tbody > tr"):
+            part_number, condition, qty, description, _ = part.select("td")
+            if part_number.text != number:
+                continue
 
-            part_id, condition, qty, description, _ = part.find_elements(By.XPATH, ".//td")
+            self.product_info["part number"] = part_number.text
+            self.product_info["description"] = description.text
+            self.product_info["QTY"] = qty.text
+            self.product_info["condition"] = condition.text
 
-            search_results.append({
-                "vendor": "primaaviation",
-                "part number": part_id.text,
-                "description": description.text,
-                "QTY": qty.text,
-                "condition": condition.text
-            })
+            search_results.append(deepcopy(self.product_info))
 
         return self.status

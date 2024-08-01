@@ -1,3 +1,6 @@
+from copy import deepcopy
+from Logic.data_file import Status
+from Logic.parser import ParserSelenium
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -6,7 +9,7 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException,
 from subprocess import CREATE_NO_WINDOW
 
 
-class Wencor:
+class Wencor(ParserSelenium):
     def __init__(self):
         options = webdriver.ChromeOptions()
         options.add_argument("--headless")
@@ -16,61 +19,44 @@ class Wencor:
         chrome_service = webdriver.ChromeService()
         chrome_service.creation_flags = CREATE_NO_WINDOW
 
-        self.driver = webdriver.Chrome(options=options, service=chrome_service)
+        super().__init__(options=options, service=chrome_service)
 
-        self.delay = 20
-
-        self.logged_in = False
-        self.status = "OK"
-
-    def __del__(self):
-        self.driver.quit()
-
-    def login_function(self, login, password):
+    def login_function(self, login: str, password: str) -> Status:
         self.driver.delete_all_cookies()
 
-        try:
-            self.driver.get("https://fly.wencor.com/log-in")
-        except TimeoutException:
-            self.status = "Time error"
-            return self.status
-        except WebDriverException:
-            self.status = "Connection error"
+        if not self.request_wrapper(url="https://fly.wencor.com/log-in"):
             return self.status
 
+        input_user_name = self.driver.find_element(By.XPATH,
+                                                   "//input[@id='_rhythmloginmultiinstancesportlet_WAR_rhythmloginm"
+                                                   "ultiinstancesportlet_INSTANCE_Al8rQt3TrPh8_username']")
+        input_password = self.driver.find_element(By.XPATH,
+                                                  "//input[@id='_rhythmloginmultiinstancesportlet_WAR_rhythmloginmu"
+                                                  "ltiinstancesportlet_INSTANCE_Al8rQt3TrPh8_password']")
+        login_button = self.driver.find_elements(By.XPATH, "//button[@class='btn btn-primary login-btn']")[1]
+
+        input_user_name.send_keys(login)
+        input_password.send_keys(password)
+        login_button.click()
+        self.logged_in = True
+        self.status = Status.OK
+
         try:
-            input_user_name = self.driver.find_element(By.XPATH,
-                                                       "//input[@id='_rhythmloginmultiinstancesportlet_WAR_rhythmloginm"
-                                                       "ultiinstancesportlet_INSTANCE_Al8rQt3TrPh8_username']")
-            input_password = self.driver.find_element(By.XPATH,
-                                                      "//input[@id='_rhythmloginmultiinstancesportlet_WAR_rhythmloginmu"
-                                                      "ltiinstancesportlet_INSTANCE_Al8rQt3TrPh8_password']")
-            login_button = self.driver.find_elements(By.XPATH, "//button[@class='btn btn-primary login-btn']")[1]
-
-            input_user_name.send_keys(login)
-            input_password.send_keys(password)
-            login_button.click()
-            self.logged_in = True
-            self.status = "OK"
-
-            try:
-                self.driver.find_element(By.XPATH, "//li[@class='error']")
-                self.status = "Login error"
-                self.logged_in = False
-            except NoSuchElementException:
-                pass
-        except TimeoutException:
-            self.status = "Login error"
+            self.driver.find_element(By.XPATH, "//li[@class='error']")
+            self.status = Status.Login_error
             self.logged_in = False
-        finally:
-            return self.status
+        except NoSuchElementException:
+            pass
 
-    def search_part(self, number, search_results):
+        return self.status
+
+    def search_part(self, number: str, search_results: list) -> Status:
         if not self.logged_in:
-            self.status = "Login error"
+            self.status = Status.Login_error
             return self.status
 
-        self.status = "OK"
+        self.status = Status.OK
+        self.reset_product_info()
 
         input_field = self.driver.find_element(By.XPATH, "//input[@id='header-search']")
         search_button = self.driver.find_element(By.XPATH, "//a[@class='icon-label btn-icon expanded-btn']")
@@ -94,46 +80,35 @@ class Wencor:
                 WebDriverWait(self.driver, self.delay).until(
                     ec.visibility_of_element_located((By.XPATH, "//div[@class='product-title']/h1")))
 
-                part_id = self.driver.find_element(By.XPATH, "//div[@class='product-title']/h1").get_attribute(
+                part_number = self.driver.find_element(By.XPATH, "//div[@class='product-title']/h1").get_attribute(
                     "innerHTML")
-                description = self.driver.find_element(By.XPATH, "//div[@class='product-description']").text.lower()
 
-                WebDriverWait(self.driver, self.delay).until(
-                    ec.presence_of_element_located((By.XPATH, "//*[@class='attributes-table second-column']")))
+                if part_number == number:
+                    WebDriverWait(self.driver, self.delay).until(
+                        ec.presence_of_element_located((By.XPATH, "//*[@class='attributes-table second-column']")))
 
-                try:
-                    interchanges = self.driver.find_element(By.XPATH, "//*[text()='Interchanges']/following::td").text
-                except NoSuchElementException:
-                    interchanges = ''
-
-                if part_id == number or part_id in interchanges.split(' ; '):
-                    price = self.driver.find_element(By.XPATH,
-                                                     "//h2[@class='price new price-large']").get_attribute("innerHTML")
-                    if price == "$0.00":
-                        price = ''
-
+                    self.product_info["part number"] = part_number
+                    self.product_info["description"] = self.driver.find_element(
+                        By.XPATH, "//div[@class='product-description']").text
                     try:
-                        qty = self.driver.find_element(By.XPATH, "//div[@class='stock-quantity']").get_attribute(
-                            "innerHTML").split()[2]
+                        self.product_info["QTY"] = self.driver.find_element(
+                            By.XPATH, "//div[@class='stock-quantity']").get_attribute("innerHTML").split()[2]
                     except NoSuchElementException:
-                        qty = ''
+                        self.product_info["QTY"] = ""
+                    self.product_info["price"] = self.driver.find_element(
+                        By.XPATH, "//h2[@class='price new price-large']").get_attribute("innerHTML")
+                    self.product_info["lead time"] = self.driver.find_element(
+                        By.XPATH, "//*[text()='Standard Lead Time']/following::td").text
+                    try:
+                        interchanges = self.driver.find_element(By.XPATH, "//*[text()='Interchanges']/following::td")
+                        self.product_info["other information"] = f"interchanges: {interchanges.text}"
+                    except NoSuchElementException:
+                        self.product_info["other information"] = ""
 
-                    lead_time = self.driver.find_element(By.XPATH,
-                                                         "//*[text()='Standard Lead Time']/following::td").text
-
-                    search_results.append({
-                        "vendor": "wencor",
-                        "part number": part_id,
-                        "description": description,
-                        "QTY": qty,
-                        "price": price,
-                        "lead time": lead_time,
-                        "other information": f"interchanges: {interchanges}"
-                    })
+                    search_results.append(deepcopy(self.product_info))
         except TimeoutException:
-            self.status = "Time error"
+            self.status = Status.Time_error
+        except WebDriverException:
+            self.status = Status.Other
         finally:
             return self.status
-
-    def change_delay(self, new_delay):
-        self.delay = new_delay

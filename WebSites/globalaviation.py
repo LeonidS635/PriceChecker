@@ -1,39 +1,29 @@
+from copy import deepcopy
+from Logic.data_file import Status
+from Logic.parser import ParserSelenium
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
-from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from subprocess import CREATE_NO_WINDOW
 
 
-class Globalaviation:
+class Globalaviation(ParserSelenium):
     def __init__(self):
         options = webdriver.ChromeOptions()
         options.add_argument("--headless")
         options.add_experimental_option("excludeSwitches", ["enable-logging"])
+        options.add_experimental_option("prefs", {"profile.managed_default_content_settings.images": 2})
 
         chrome_service = webdriver.ChromeService()
         chrome_service.creation_flags = CREATE_NO_WINDOW
 
-        self.driver = webdriver.Chrome(options=options, service=chrome_service)
+        super().__init__(options=options, service=chrome_service)
 
-        self.delay = 20
-
-        self.logged_in = False
-        self.status = "OK"
-
-    def __del__(self):
-        self.driver.quit()
-
-    def login_function(self, login, password):
+    def login_function(self, login: str, password: str) -> Status:
         self.driver.delete_all_cookies()
-        try:
-            self.driver.get("https://globalaviation.aero/gappcom-2/")
-        except TimeoutException:
-            self.status = "Time error"
-            return self.status
-        except WebDriverException:
-            self.status = "Connection error"
+        if not self.request_wrapper(url="https://globalaviation.aero/gappcom-2/"):
             return self.status
 
         input_user_name = self.driver.find_element(By.XPATH, "//input[@name='login:username']")
@@ -45,11 +35,11 @@ class Globalaviation:
 
         login_button.click()
         self.logged_in = True
-        self.status = "OK"
+        self.status = Status.OK
 
         try:
             self.driver.find_element(By.XPATH, "//span[@class='rf-msgs-sum']")
-            self.status = "Login error"
+            self.status = Status.Login_error
             self.logged_in = False
         except NoSuchElementException:
             pass
@@ -60,16 +50,16 @@ class Globalaviation:
             WebDriverWait(self.driver, self.delay).until(
                 ec.invisibility_of_element_located((By.XPATH, "//div[@id='loading_content']")))
         except TimeoutException:
-            self.status = "Time error"
+            self.status = Status.Time_error
 
         return self.status
 
-    def search_part(self, number, search_results):
+    def search_part(self, number: str, search_results: list) -> Status:
         if not self.logged_in:
-            self.status = "Login error"
+            self.status = Status.Login_error
             return self.status
 
-        self.status = "OK"
+        self.status = Status.OK
 
         search_section_button = self.driver.find_element(By.XPATH, "//td[@id='form1:StockGA:header']")
         search_section_button.click()
@@ -78,7 +68,7 @@ class Globalaviation:
             WebDriverWait(self.driver, self.delay).until(
                 ec.invisibility_of_element_located((By.XPATH, "//div[@id='loading_content']")))
         except TimeoutException:
-            self.status = "Time error"
+            self.status = Status.Time_error
             return self.status
 
         part_number_input = self.driver.find_element(By.XPATH, "//textarea[@name='gaform:s10area']")
@@ -92,7 +82,7 @@ class Globalaviation:
             WebDriverWait(self.driver, self.delay).until(
                 ec.invisibility_of_element_located((By.XPATH, "//div[@id='loading_content']")))
         except TimeoutException:
-            self.status = "Time error"
+            self.status = Status.Time_error
             return self.status
 
         try:
@@ -100,20 +90,10 @@ class Globalaviation:
         except NoSuchElementException:
             return self.status
 
-        _, _, part_number, description, qty, _, condition, _, _, price, _, lead_time, _, _ = part_info.find_elements(
-            By.XPATH, ".//td")
+        _, _, self.product_info["part number"], self.product_info["description"], self.product_info["QTY"], _, \
+            self.product_info["condition"], _, _, self.product_info["price"], _, self.product_info[
+            "lead time"], _, _ = [elem.text for elem in part_info.find_elements(By.XPATH, ".//td")]
 
-        search_results.append({
-            "vendor": "globalaviation",
-            "part number": part_number.text,
-            "description": description.text,
-            "price": price.text,
-            "QTY": qty.text,
-            "condition": condition.text,
-            "lead time": lead_time.text
-        })
+        search_results.append(deepcopy(self.product_info))
 
         return self.status
-
-    def change_delay(self, new_delay):
-        self.delay = new_delay

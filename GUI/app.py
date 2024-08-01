@@ -1,131 +1,95 @@
 import customtkinter
-from GUI import filters_window, passwords_window, error_handler, frames
-from Logic import controller, data_file
+from GUI.error_handler import ErrorHandler, FatalErrorHandler
+from GUI.main_frame import MainFrame
+from Logic.controller import Controller
+from Logic.data_file import DataClass
+from queue import SimpleQueue
 import traceback
 
 
-class App(customtkinter.CTk):
+class Root(customtkinter.CTk):
     def __init__(self):
         super().__init__()
 
-        self.data = data_file.DataClass(master=self)
-        self.frames = frames.Frames(data=self.data)
-        self.controller = controller.Controller(data=self.data, frames=self.frames)
+        self.data = DataClass()
+        self.controller = Controller(master=self, data=self.data)
 
-        self.geometry("1000x800")
+        self.geometry("1200x800")
         self.title("Price checker")
 
         self.protocol("WM_DELETE_WINDOW", self.exit)
-        self.report_callback_exception = self.report_callback_exception
+        self.report_callback_exception = self.report_tkinter_error
+        self.need_to_destroy = False
+        self.error_messages = SimpleQueue()
+        self.fatal_error_messages = SimpleQueue()
 
-        self.grid_columnconfigure(1, weight=1)
-        self.grid_rowconfigure(1, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
 
-        self.label = customtkinter.CTkLabel(self, text="Price\nChecker", font=("Arial", 25), justify=customtkinter.LEFT)
-        self.label.grid(row=0, column=0, sticky="nw", padx=5, pady=(5, 5))
+        self.main_frame = MainFrame(master=self, data=self.data, controller=self.controller)
+        self.main_frame.grid(column=0, row=0, sticky="nsew")
 
-        self.frames.connection_frame.grid(row=5, column=0, sticky="nsew")
-        self.frames.delay_frame.grid(row=6, column=0, sticky="nsew")
-        self.frames.search_frame.grid(row=0, column=1, sticky="nsew")
-        self.frames.search_results_frame.grid(row=1, column=1, sticky="nsew", rowspan=6)
-        self.frames.websites_list_frame.grid(row=4, column=0, sticky="nsew")
-
-        self.create_csv_button = customtkinter.CTkButton(self, text="Create csv",
-                                                         command=self.frames.search_results_frame.create_csv)
-        self.create_csv_button.grid(row=1, column=0, padx=(5, 5), pady=(5, 5))
-
-        self.filters_button = customtkinter.CTkButton(self, text="Filters", command=self.create_filters_frame)
-        self.filters_button.grid(row=2, column=0, padx=(5, 5), pady=(5, 5))
-
-        self.update_search_results_button = customtkinter.CTkButton(
-            self, text="Update search results", command=self.frames.search_results_frame.update_search_results)
-        self.update_search_results_button.grid(row=3, column=0, padx=(5, 5), pady=(5, 5))
-
-        self.interactive_elements = [
-            self.filters_button,
-            self.update_search_results_button,
-            self.create_csv_button,
-            self.frames.connection_frame.connect_button,
-            self.frames.connection_frame.reconnect_button,
-            self.frames.connection_frame.passwords_button,
-            self.frames.search_frame.part_number_input,
-            self.frames.search_frame.search_button,
-            self.frames.delay_frame.delay_input,
-            self.frames.delay_frame.change_delay_button
-        ]
+        self.fatal_error_window = None
 
         self.bind_events()
         self.controller.init_parsers()
 
-    def create_filters_frame(self):
-        filters_window.FiltersFrame(self.data).grab_set()
+    def enable_interactive_elements(self):
+        for frame in self.main_frame.frames_with_interactive_elements:
+            frame.enable_all_interactive_elements()
+
+    def disable_interactive_elements(self):
+        for frame in self.main_frame.frames_with_interactive_elements:
+            frame.disable_all_interactive_elements()
 
     def bind_events(self):
-        self.bind("<<LoginDasi>>", lambda event: self.controller.connector.login_with_captcha("Dasi"))
+        for website_name in self.data.websites_names_with_captcha_for_login:
+            self.bind(f"<<CreateCaptchaForm-{website_name}>>",
+                      lambda event, website=website_name: self.controller.connector.create_captcha_form(website))
+
+        self.bind("<<CreatePasswordsForm>>", lambda event: self.main_frame.connection_frame.change_passwords())
 
         self.bind("<<EnableElems>>", lambda event: self.enable_interactive_elements())
         self.bind("<<DisableElems>>", lambda event: self.disable_interactive_elements())
 
-        self.bind("<<ChangeSearchButtonToStop>>", lambda event: self.change_search_button_to_stop())
-        self.bind("<<RestoreSearchButton>>", lambda event: self.restore_search_button())
+        for i, website_name in enumerate(self.data.websites_names):
+            self.bind(f"<<StartProgressBar-{website_name}>>",
+                      lambda event, number=i: self.main_frame.websites_list_frame.start_progressbar(number))
+            self.bind(f"<<StopProgressBar-{website_name}>>",
+                      lambda event, number=i: self.main_frame.websites_list_frame.stop_progressbar(number))
+            self.bind(f"<<SelectCheckbox-{website_name}>>",
+                      lambda event, number=i: self.main_frame.websites_list_frame.select_checkbox(number))
+            self.bind(f"<<DeselectCheckbox-{website_name}>>",
+                      lambda event, number=i: self.main_frame.websites_list_frame.deselect_checkbox(number))
+        self.bind("<<DeselectAllCheckboxes>>",
+                  lambda event, number=i: self.main_frame.websites_list_frame.deselect_checkboxes())
 
-        for i in range(len(self.data.websites_names)):
-            self.bind(f"<<StartProgressBar-{i}>>",
-                      lambda event, number=i: self.frames.websites_list_frame.start_progressbar(number))
-            self.bind(f"<<StopProgressBar-{i}>>",
-                      lambda event, number=i: self.frames.websites_list_frame.stop_progressbar(number))
+        self.bind("<<ClearSearchResults>>", lambda event: self.main_frame.search_results_frame.clear())
+        self.bind("<<PrintSearchResults>>", lambda event: self.main_frame.search_results_frame.print_search_results())
+        self.bind("<<UpdateSearchResults>>", lambda event: self.main_frame.search_results_frame.update_search_results())
 
-        for website in self.data.websites_names:
-            self.bind(f"<<ReportErrorTime-{website}>>", lambda event, site=website: self.report_error_time(site))
-        for website in self.data.websites_names:
-            self.bind(f"<<ReportErrorLogin-{website}>>",
-                      lambda event, site=website: self.report_error_login(site))
-        for website in self.data.websites_names:
-            self.bind(f"<<ReportErrorConnection-{website}>>",
-                      lambda event, site=website: self.report_error_connection(site))
+        self.bind("<<ReportError>>", lambda event: self.report_error())
+        self.bind("<<ReportFatalError>>", lambda event: self.report_fatal_error())
 
-    def connect(self):
-        self.controller.connect()
+        self.bind("<<CheckNeedToDestroy>>", lambda event: self.check_need_to_destroy())
 
-    def reconnect(self):
-        self.controller.reconnect()
+    def report_error(self):
+        title, message = self.error_messages.get()
+        ErrorHandler(master=self, title=title, message=message)
 
-    def search(self, _=None):
-        self.controller.search()
+    def report_fatal_error(self):
+        self.need_to_destroy = True
+        title, message = self.fatal_error_messages.get()
+        FatalErrorHandler(master=self, title=title, message=message)
 
-    def stop_search(self):
-        self.controller.stop_search()
+    def report_tkinter_error(self, *_):
+        self.fatal_error_messages.put(("GUI Error", traceback.format_exc(limit=0)))
+        self.report_fatal_error()
 
-    def change_passwords(self):
-        passwords_window.PasswordsWindow(self.data, self.controller.connector.passwords_file).grab_set()
-
-    def enable_interactive_elements(self):
-        for elem in self.interactive_elements:
-            elem.configure(state="normal")
-
-    def disable_interactive_elements(self):
-        for elem in self.interactive_elements:
-            elem.configure(state="disabled")
-
-    def change_search_button_to_stop(self):
-        self.frames.search_frame.search_button.configure(text="Stop search", command=self.stop_search, state="normal")
-
-    def restore_search_button(self):
-        self.frames.search_frame.search_button.configure(text="Search", command=self.search)
-
-    def report_error_time(self, website):
-        error_handler.ErrorHandler(self, website, "Loading took too much time!")
-
-    def report_error_login(self, website):
-        error_handler.ErrorHandler(self, website, "Login failed!")
-
-    def report_error_connection(self, website):
-        error_handler.ErrorHandler(self, website, f"Unable to connect {website}!")
-
-    def report_callback_exception(self, *_):
-        traceback.print_exc()
-        error_handler.FatalErrorHandler(self, traceback.format_exc(limit=0), self.exit)
+    def check_need_to_destroy(self):
+        if self.need_to_destroy:
+            self.exit()
 
     def exit(self):
         self.controller.del_parsers()
-        self.destroy()
+        self.quit()
