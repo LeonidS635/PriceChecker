@@ -29,8 +29,6 @@ class Root(customtkinter.CTk):
         self.main_frame = MainFrame(master=self, data=self.data, controller=self.controller)
         self.main_frame.grid(column=0, row=0, sticky="nsew")
 
-        self.fatal_error_window = None
-
         self.bind_events()
         self.controller.init_parsers()
 
@@ -83,8 +81,8 @@ class Root(customtkinter.CTk):
         FatalErrorHandler(master=self, title=title, message=message)
 
     def report_tkinter_error(self, *_):
-        self.fatal_error_messages.put(("GUI Error", traceback.format_exc(limit=0)))
-        self.report_fatal_error()
+        FatalErrorHandler(master=self, title="GUI Error", message=traceback.format_exc(limit=0))
+        self.after(1000, self.exit)
 
     def check_need_to_destroy(self):
         if self.need_to_destroy:

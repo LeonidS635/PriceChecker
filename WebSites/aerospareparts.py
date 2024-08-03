@@ -44,6 +44,7 @@ class Aerospareparts(ParserRequests):
             return self.status
 
         self.status = Status.OK
+        self.reset_product_info()
 
         if not self.request_wrapper(self.session.get, url=("https://aerospareparts.com/PartNumber/" + number)):
             return self.status
@@ -52,6 +53,10 @@ class Aerospareparts(ParserRequests):
         if page.select_one("div[class='alert alert-warning fade in']") is not None:
             self.logged_in = False
             self.status = Status.Login_error
+            return self.status
+
+        if page.find(string="has not been found.") is not None:
+            self.status = Status.OK
             return self.status
 
         self.product_info["part number"] = page.find("span", string="Part Number :").next_sibling.text

@@ -8,21 +8,23 @@ class SearchFrame(Frame):
     def __init__(self, master, controller: Controller, **kwargs):
         super().__init__(master, **kwargs)
 
+        self.master = master
         self.controller = controller
 
+        self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
 
         self.part_number_label = customtkinter.CTkLabel(self, text="Enter part number:")
-        self.part_number_label.grid(row=0, column=0, padx=(5, 5), pady=(5, 5), sticky="we")
+        self.part_number_label.grid(row=0, column=0, padx=(5, 5), pady=(5, 5), sticky="swe")
 
         self.part_number_input = customtkinter.CTkEntry(self, state="disabled")
-        self.part_number_input.grid(row=0, column=1, sticky="we")
+        self.part_number_input.grid(row=0, column=1, padx=(5, 5), pady=(5, 5), sticky="swe")
         self.part_number_input.bind("<Return>", self.search)
         self.part_number_input.bind("<Control-KeyPress>", self.keypress)
         self.interactive_elements.append(self.part_number_input)
 
         self.search_button = customtkinter.CTkButton(self, text="Search", command=self.search, state="disabled")
-        self.search_button.grid(row=0, column=2, padx=(5, 5), pady=(5, 5), sticky="we")
+        self.search_button.grid(row=0, column=2, padx=(5, 5), pady=(5, 5), sticky="swe")
 
     def search(self, _=None):
         if self.search_button not in self.interactive_elements:
@@ -41,14 +43,9 @@ class SearchFrame(Frame):
 
     @staticmethod
     def keypress(event):
-        def is_ru_lang():
-            user = ctypes.windll.LoadLibrary("user32.dll")
-            return hex(getattr(user, "GetKeyboardLayout")(0)) == "0x4190419"
-
-        if is_ru_lang():
-            if event.keycode == 86:
-                event.widget.event_generate("<<Paste>>")
-            if event.keycode == 67:
-                event.widget.event_generate("<<Copy>>")
-            if event.keycode == 88:
-                event.widget.event_generate("<<Cut>>")
+        if event.keycode == 88 and event.keysym.lower() != "x":
+            event.widget.event_generate("<<Cut>>")
+        elif event.keycode == 86 and event.keysym.lower() != "v":
+            event.widget.event_generate("<<Paste>>")
+        elif event.keycode == 67 and event.keysym.lower() != "c":
+            event.widget.event_generate("<<Copy>>")

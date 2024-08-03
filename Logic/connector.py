@@ -45,13 +45,13 @@ class Connector:
                         self.master.event_generate(f"<<CreateCaptchaForm-{website_name}>>")
                         future = executor.submit(self.login_with_captcha_code,
                                                  parser=parser,
-                                                 login=login_data[website_name]["login"],
-                                                 password=login_data[website_name]["password"])
+                                                 login=login_data.get(website_name, {"login": ""})["login"],
+                                                 password=login_data.get(website_name, {"password": ""})["password"])
                         future.add_done_callback(lambda f, website=website_name: self.callback(f, website))
                     else:
                         future = executor.submit(parser.login_function,
-                                                 login=login_data[website_name]["login"],
-                                                 password=login_data[website_name]["password"])
+                                                 login=login_data.get(website_name, {"login": ""})["login"],
+                                                 password=login_data.get(website_name, {"password": ""})["password"])
                         future.add_done_callback(lambda f, website=website_name: self.callback(f, website))
 
     def create_captcha_form(self, website_name: str):

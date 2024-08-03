@@ -10,7 +10,7 @@ class MainFrame(customtkinter.CTkFrame):
         super().__init__(master=master, **kwargs)
 
         self.grid_columnconfigure(1, weight=1)
-        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=1)
 
         self.label = customtkinter.CTkLabel(self, text="Price\nChecker", font=("Arial", 25), justify=customtkinter.LEFT)
         self.label.grid(row=0, column=0, sticky="nw", padx=5, pady=(5, 5))
@@ -19,13 +19,13 @@ class MainFrame(customtkinter.CTkFrame):
         self.search_frame.grid(row=0, column=1, sticky="nsew")
 
         self.filters_frame = filters_frame.FiltersFrame(master=self, data=data, corner_radius=0)
-        self.filters_frame.grid(row=0, column=2, sticky="nsew", rowspan=6)
+        self.filters_frame.grid(row=0, column=2, sticky="nsew")
 
         self.special_buttons_frame = special_buttons_frame.SpecialButtonsFrame(master=self, data=data, corner_radius=0)
         self.special_buttons_frame.grid(row=1, column=0, sticky="nsew")
 
         self.search_results_frame = search_results_frame.SearchResultsFrame(master=self, data=data, corner_radius=0)
-        self.search_results_frame.grid(row=1, column=1, sticky="nsew", rowspan=5)
+        self.search_results_frame.grid(row=1, column=1, sticky="nsew", rowspan=5, columnspan=2)
 
         self.websites_list_frame = websites_list_frame.WebsitesListFrame(master=self, data=data, corner_radius=0)
         self.websites_list_frame.grid(row=3, column=0, sticky="nsew")

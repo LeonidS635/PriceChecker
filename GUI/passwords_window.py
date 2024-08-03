@@ -1,5 +1,4 @@
 import customtkinter
-import ctypes
 from json import dump, load
 from Logic.data_file import DataClass
 from os.path import exists
@@ -11,13 +10,12 @@ class PasswordsWindow(customtkinter.CTkToplevel):
 
         self.data = data
 
-        login_data = {}
+        self.login_data = {}
         if exists(self.data.passwords_file):
             with open(self.data.passwords_file, "r") as file:
-                login_data = load(file)
+                self.login_data = load(file)
 
         self.title("Login data")
-        self.geometry(f"600x{len(self.data.websites_names) * 40 + 55}")
         self.resizable(False, False)
         self.protocol("WM_DELETE_WINDOW", self.confirm)
         self.attributes("-topmost", "true")
@@ -35,13 +33,13 @@ class PasswordsWindow(customtkinter.CTkToplevel):
             website_label = customtkinter.CTkLabel(self, text=website_name)
             website_label.grid(row=i + 1, column=0, padx=(10, 10), pady=(5, 5), sticky="w")
 
-            if website_name in login_data.keys():
+            if website_name in self.login_data.keys():
                 login_input = customtkinter.CTkEntry(self, placeholder_text="login", width=220,
                                                      textvariable=customtkinter.StringVar(
-                                                         self, value=login_data[website_name]["login"]))
+                                                         self, value=self.login_data[website_name]["login"]))
                 password_input = customtkinter.CTkEntry(self, placeholder_text="password", width=220,
                                                         textvariable=customtkinter.StringVar(
-                                                            self, value=login_data[website_name]["password"]))
+                                                            self, value=self.login_data[website_name]["password"]))
             else:
                 login_input = customtkinter.CTkEntry(self, placeholder_text="login", width=220)
                 password_input = customtkinter.CTkEntry(self, placeholder_text="password", width=220)
@@ -60,26 +58,20 @@ class PasswordsWindow(customtkinter.CTkToplevel):
 
     @staticmethod
     def keypress(event):
-        def is_ru_lang():
-            user = ctypes.windll.LoadLibrary("user32.dll")
-            return hex(getattr(user, "GetKeyboardLayout")(0)) == "0x4190419"
-
-        if is_ru_lang():
-            if event.keycode == 86:
-                event.widget.event_generate("<<Paste>>")
-            if event.keycode == 67:
-                event.widget.event_generate("<<Copy>>")
-            if event.keycode == 88:
-                event.widget.event_generate("<<Cut>>")
+        if event.keycode == 88 and event.keysym.lower() != "x":
+            event.widget.event_generate("<<Cut>>")
+        elif event.keycode == 86 and event.keysym.lower() != "v":
+            event.widget.event_generate("<<Paste>>")
+        elif event.keycode == 67 and event.keysym.lower() != "c":
+            event.widget.event_generate("<<Copy>>")
 
     def confirm(self):
-        data = {}
         for i, website_name in enumerate(self.data.websites_names):
             login = self.logins[i].get()
             password = self.passwords[i].get()
-            data[website_name] = {"login": login, "password": password}
+            self.login_data.update({website_name: {"login": login, "password": password}})
 
         with open(self.data.passwords_file, "w") as file:
-            dump(data, file, indent=4)
+            dump(self.login_data, file, indent=4)
 
         self.destroy()

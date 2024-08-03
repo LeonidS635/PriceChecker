@@ -51,13 +51,12 @@ class Lasaero(ParserRequests):
             return self.status
 
         if not self.request_wrapper(self.session.get, url=("https://www.lasaero.com/part/" + number)):
+            if self.response.status_code == 404:
+                self.status = Status.OK
             return self.status
 
         page = BeautifulSoup(self.response.text, "lxml")
         res_table = page.select_one("table[class='table table-bordered table-responsive table-condensed']")
-
-        if res_table is None:
-            return self.status
 
         _, description, _, qty_in_stock, _, qty_on_order, _, price, _, lead_time = res_table.find_all("td")
         self.product_info["part number"] = page.select_one("h1").text

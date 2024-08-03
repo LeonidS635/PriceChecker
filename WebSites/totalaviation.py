@@ -20,10 +20,11 @@ class Totalaviation(ParserRequests):
             return self.status
 
         page = BeautifulSoup(self.response.text, "lxml")
-        if rows := page.select("div[class='search-result-row'] > dd"):
-            self.product_info["part number"], self.product_info["description"], self.product_info["QTY"], \
-                self.product_info["condition"], _, _, _ = [elem.text for elem in rows]
+        for part in page.select("div[class='result']"):
+            if rows := part.select("dd"):
+                self.product_info["part number"], self.product_info["description"], self.product_info["QTY"], \
+                    self.product_info["condition"], _, _, _ = [elem.text for elem in rows]
 
-            search_results.append(deepcopy(self.product_info))
+                search_results.append(deepcopy(self.product_info))
 
         return self.status

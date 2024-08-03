@@ -4,8 +4,9 @@ from Logic.data_file import DataClass
 
 class FiltersWindow(customtkinter.CTkToplevel):
     def __init__(self, master, data: DataClass, **kwargs):
-        super().__init__(master, **kwargs)
+        super().__init__(master=master, **kwargs)
 
+        self.master = master
         self.data = data
 
         self.title("Search filters")
@@ -39,12 +40,16 @@ class FiltersWindow(customtkinter.CTkToplevel):
             if self.data.conditions_to_search[i]:
                 self.checkboxes_conditions[i].select()
 
-        self.select_all_websites_button = customtkinter.CTkButton(self, text="Deselect all",
-                                                                  command=self.deselect_all_websites)
+        self.select_all_websites_button = customtkinter.CTkButton(
+            self, text="Deselect all", command=self.deselect_all_websites) if any(
+            self.data.websites_to_search.values()) else customtkinter.CTkButton(
+            self,  text="Select all", command=self.select_all_websites)
         self.select_all_websites_button.grid(column=0, padx=(10, 5), pady=(5, 5))
 
-        self.select_all_conditions_button = customtkinter.CTkButton(self, text="Deselect all",
-                                                                    command=self.deselect_all_conditions)
+        self.select_all_conditions_button = customtkinter.CTkButton(
+            self, text="Deselect all", command=self.deselect_all_conditions) if any(
+            self.data.conditions_to_search) else customtkinter.CTkButton(
+            self, text="Select all", command=self.select_all_conditions)
         self.select_all_conditions_button.grid(row=self.select_all_websites_button.grid_info()["row"], column=1,
                                                padx=(5, 10), pady=(5, 5))
 
@@ -92,4 +97,5 @@ class FiltersWindow(customtkinter.CTkToplevel):
             else:
                 self.data.conditions_to_search[i] = False
 
+        self.master.event_generate("<<UpdateSearchResults>>")
         self.destroy()
