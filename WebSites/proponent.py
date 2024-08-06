@@ -100,7 +100,7 @@ class Proponent(ParserSelenium):
                     By.XPATH, "//td[@aria-describedby='jQGridDemo_Cust_part']").text
                 self.product_info["description"] = self.driver.find_element(
                     By.XPATH, "//td[@aria-describedby='jQGridDemo_Item_description1']").text
-                self.product_info["price"] = '$' + price if (price := self.driver.find_element(
+                self.product_info["price"] = price if (price := self.driver.find_element(
                     By.XPATH, "//td[@aria-describedby='jQGridDemo_Price']").text) else ""
                 self.product_info["QTY"] = self.driver.find_element(
                     By.XPATH, "//td[@aria-describedby='jQGridDemo_QtyAvailable']").text

@@ -60,7 +60,7 @@ class Controller:
         try:
             status = future.result()
         except Exception as e:
-            self.master.error_messages.put((website, e))
+            self.master.error_messages.put((website, repr(e)))
             self.master.event_generate("<<ReportError>>")
         else:
             if status != Status.OK:

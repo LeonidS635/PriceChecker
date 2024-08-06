@@ -3,7 +3,8 @@ from CTkMessagebox import CTkMessagebox
 
 class ErrorHandler(CTkMessagebox):
     def __init__(self, master, title: str, message: str):
-        super().__init__(master=master, title=title, message=message, icon="warning")
+        super().__init__(master=master, title=title, message=message, icon="warning", width=500, height=200,
+                         wraplength=500)
 
 
 class FatalErrorHandler(CTkMessagebox):

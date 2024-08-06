@@ -15,9 +15,11 @@ class Aviodirect(ParserRequests):
 
     def search_part(self, number: str, search_results: list) -> Status:
         params = {"post_type": "product", "product_cat": 0, "s": number}
-        headers = {"user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-                                 "(KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36"}
+        headers = {"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                                 "Chrome/127.0.0.0 Safari/537.36"}
         if not self.request_wrapper(self.session.get, url="https://aviodirect.com/", params=params, headers=headers):
+            if self.response.status_code == 409:
+                self.status = Status.OK
             return self.status
 
         page = BeautifulSoup(self.response.text, "lxml")
