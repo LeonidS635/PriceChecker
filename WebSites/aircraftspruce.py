@@ -3,6 +3,7 @@ from Logic.data_file import Status
 from Logic.parser import ParserSelenium
 from selenium import webdriver
 from selenium.webdriver import Keys
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
@@ -33,36 +34,39 @@ class Aircraftspruce(ParserSelenium):
         search_input = self.driver.find_element(By.CSS_SELECTOR, "input[id=search_text]")
         search_input.clear()
         search_input.send_keys(number)
-        search_input.send_keys(Keys.RETURN)
-
-        if self.driver.current_url == "https://www.aircraftspruce.com/search/search.php":
-            try:
-                ref = self.driver.find_element(By.CSS_SELECTOR, "div[class='prTitle'] > a")
-                ref.click()
-            except NoSuchElementException:
-                return self.status
+        ActionChains(self.driver).move_to_element(search_input).click(search_input).perform()
 
         try:
+            WebDriverWait(self.driver, self.delay).until(
+                ec.visibility_of_element_located((By.CSS_SELECTOR, "div[class='rfk_results']")))
+
+            ref = self.driver.find_element(By.CSS_SELECTOR, "div[class='rfk_product'] > a")
+            ref.click()
+            search_input.send_keys(Keys.ESCAPE)
+
             WebDriverWait(self.driver, self.delay).until(
                 ec.visibility_of_element_located((By.CSS_SELECTOR, "div[class='prModel']")))
         except TimeoutException:
             self.status = Status.Time_error
             return self.status
+        except NoSuchElementException:
+            search_input.send_keys(Keys.ESCAPE)
+            WebDriverWait(self.driver, self.delay).until(
+                ec.invisibility_of_element_located((By.CSS_SELECTOR, "div[class='rfk_results']")))
+            return self.status
 
         part_number_div = self.driver.find_element(By.CSS_SELECTOR, "div[class='prModel']")
-        if part_number_div is None:
-            return self.status
+        if part_number_div is not None:
+            part_number = part_number_div.text.split('\n')[1].strip().split()[-1]
+            if part_number.lower() == number.lower():
+                self.product_info["part number"] = part_number
+                self.product_info["description"] = self.driver.find_element(
+                    By.CSS_SELECTOR, "div[class='prDetailRight'] > h2").text
+                self.product_info["price"] = self.driver.find_element(
+                    By.CSS_SELECTOR, "div[class='prPrice'] div[id='np']").text.split('/')[0]
+                self.product_info["lead time"] = self.driver.find_element(
+                    By.CSS_SELECTOR, "div[class='prStockStatus']").text
+                search_results.append(deepcopy(self.product_info))
 
-        part_number = part_number_div.text.split('\n')[1].strip().split()[-1]
-        if part_number.lower() != number.lower():
-            return self.status
-
-        self.product_info["part number"] = part_number
-        self.product_info["description"] = self.driver.find_element(
-            By.CSS_SELECTOR, "div[class='prDetailRight'] > h2").text
-        self.product_info["price"] = self.driver.find_element(
-            By.CSS_SELECTOR, "div[class='prPrice'] div[id='np']").text.split('/')[0]
-        self.product_info["lead time"] = self.driver.find_element(By.CSS_SELECTOR, "div[class='prStockStatus']").text
-        search_results.append(deepcopy(self.product_info))
-
+        self.driver.back()
         return self.status

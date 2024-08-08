@@ -32,7 +32,7 @@ class Dasi(ParserRequests):
 
         captcha_url = page.select_one("img[alt='captcha']")["src"]
         if not self.request_wrapper(self.session.get, url=("https://store.dasi.com" + captcha_url)):
-            return self.status
+            return None
 
         img_bytes = self.response.content
         file = "../captcha.png"

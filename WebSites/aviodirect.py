@@ -30,9 +30,9 @@ class Aviodirect(ParserRequests):
 
         self.product_info["part number"], self.product_info["description"] = part_title.text.split(
             " | ") if '|' in part_title.text else part_title.text.split(" – ")
-        self.product_info["price"] = page.select_one("p[class='price']").text
-        self.product_info["condition"] = page.select_one(
-            "div[class='woocommerce-product-details__short-description']").text
+        self.product_info["price"] = price.text if (price := page.select_one("p[class='price']")) is not None else ""
+        self.product_info["condition"] = condition.text if (condition := page.select_one(
+            "div[class='woocommerce-product-details__short-description']")) is not None else ""
 
         search_results.append(deepcopy(self.product_info))
 

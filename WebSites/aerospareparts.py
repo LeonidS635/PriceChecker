@@ -61,7 +61,7 @@ class Aerospareparts(ParserRequests):
 
         self.product_info["part number"] = page.find("span", string="Part Number :").next_sibling.text
         self.product_info["description"] = page.find("span", string="Description :").next_sibling.text
-        self.product_info["QTY"] = qty.next_sibling.text if ((
+        self.product_info["QTY"] = qty.next_sibling.text.split()[0] if ((
             qty := page.find("span", string="Stock available :"))) is not None else ""
 
         titles = [title.next_sibling.text.strip().replace(" :", "") for title in
@@ -120,19 +120,20 @@ class Aerospareparts(ParserRequests):
 
             page = BeautifulSoup(self.response.text, "lxml")
             table = page.select_one("table[class='Grid']")
-            table_headers = [table_header.text.strip() for table_header in table.select("th")]
-            for row in table.select("tbody > tr"):
-                cols = row.select("td")
-                self.product_info["vendor"] = self.vendor + f" ({title})"
-                self.product_info["condition"] = page.find("label", string=re.compile("Condition")).find_next_sibling(
-                    "span").text
-                self.product_info["QTY"] = qty.find_next_sibling("span").text if ((
-                    qty := page.find("label", string=re.compile("Stock available")))) is not None else re.sub(
-                    "[^0-9]", "", cols[table_headers.index("QTY")].text.split()[0])
-                self.product_info["price"] = cols[table_headers.index("Unit price")].text
-                self.product_info["lead time"] = cols[table_headers.index("LT")].text.replace('*', "")
-                self.product_info["warehouse"] = cols[table_headers.index("Incoterms")].text
+            if table is not None:
+                table_headers = [table_header.text.strip() for table_header in table.select("th")]
+                for row in table.select("tbody > tr"):
+                    cols = row.select("td")
+                    self.product_info["vendor"] = self.vendor + f" ({title})"
+                    self.product_info["condition"] = page.find(
+                        "label", string=re.compile("Condition")).find_next_sibling("span").text
+                    self.product_info["QTY"] = qty.find_next_sibling("span").text if ((
+                        qty := page.find("label", string=re.compile("Stock available")))) is not None else re.sub(
+                        "[^0-9]", "", cols[table_headers.index("QTY")].text.split()[0])
+                    self.product_info["price"] = cols[table_headers.index("Unit price")].text
+                    self.product_info["lead time"] = cols[table_headers.index("LT")].text.replace('*', "")
+                    self.product_info["warehouse"] = cols[table_headers.index("Incoterms")].text
 
-                search_results.append(deepcopy(self.product_info))
+                    search_results.append(deepcopy(self.product_info))
 
         return self.status
