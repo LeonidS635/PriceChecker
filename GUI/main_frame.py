@@ -1,6 +1,6 @@
 import customtkinter
 from GUI import (connection_frame, delay_frame, filters_frame, search_frame, search_results_frame,
-                 special_buttons_frame, websites_list_frame)
+                 excel_files_frame, websites_list_frame)
 from Logic.controller import Controller
 from Logic.data_file import DataClass
 
@@ -21,13 +21,14 @@ class MainFrame(customtkinter.CTkFrame):
         self.filters_frame = filters_frame.FiltersFrame(master=self, data=data, corner_radius=0)
         self.filters_frame.grid(row=0, column=2, sticky="nsew")
 
-        self.special_buttons_frame = special_buttons_frame.SpecialButtonsFrame(master=self, data=data, corner_radius=0)
-        self.special_buttons_frame.grid(row=1, column=0, sticky="nsew")
+        self.excel_files_frame = excel_files_frame.ExcelFilesFrame(master=self, data=data, corner_radius=0)
+        self.excel_files_frame.grid(row=1, column=0, sticky="nsew")
 
         self.search_results_frame = search_results_frame.SearchResultsFrame(master=self, data=data, corner_radius=0)
         self.search_results_frame.grid(row=1, column=1, sticky="nsew", rowspan=5, columnspan=2)
 
-        self.websites_list_frame = websites_list_frame.WebsitesListFrame(master=self, data=data, corner_radius=0)
+        self.websites_list_frame = websites_list_frame.WebsitesListFrame(master=self, data=data, corner_radius=0,
+                                                                         height=600)
         self.websites_list_frame.grid(row=3, column=0, sticky="nsew")
 
         self.connection_frame = connection_frame.ConnectionFrame(master=self, data=data, controller=controller,
@@ -42,6 +43,5 @@ class MainFrame(customtkinter.CTkFrame):
             self.delay_frame,
             self.filters_frame,
             self.search_frame,
-            self.special_buttons_frame,
-            self.websites_list_frame
+            self.excel_files_frame
         ]

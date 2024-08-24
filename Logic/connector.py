@@ -15,7 +15,7 @@ class Connector:
         self.master = master
 
         self.captcha_code = customtkinter.StringVar()
-        self.captcha_form = None
+        self.captcha_form: CaptchaWindow | None = None
 
     def connect(self):
         if not exists(self.data.passwords_file):
@@ -63,7 +63,8 @@ class Connector:
                         future.add_done_callback(lambda f, website=website_name: self.callback(f, website))
 
     def create_captcha_form(self, website_name: str):
-        self.captcha_form = CaptchaWindow(master=self.master, data=self.data, website_name=website_name,
+        self.captcha_form = CaptchaWindow(master=self.master, master_x=self.master.winfo_x(),
+                                          master_y=self.master.winfo_y(), data=self.data, website_name=website_name,
                                           captcha_code=self.captcha_code)
         self.captcha_form.wait_visibility()
 

@@ -1,5 +1,6 @@
 import customtkinter
-from GUI.error_handler import ErrorHandler, FatalErrorHandler
+from CTkMessagebox import CTkMessagebox
+from GUI.closing_notification_window import AppClosingNotification
 from GUI.main_frame import MainFrame
 from Logic.controller import Controller
 from Logic.data_file import DataClass
@@ -17,11 +18,11 @@ class Root(customtkinter.CTk):
         self.geometry("1200x800")
         self.title("Price checker")
 
-        self.protocol("WM_DELETE_WINDOW", self.exit)
+        self.protocol("WM_DELETE_WINDOW", self.stop_working_and_destroy_parsers)
         self.report_callback_exception = self.report_tkinter_error
-        self.need_to_destroy = False
-        self.error_messages = SimpleQueue()
-        self.fatal_error_messages = SimpleQueue()
+        self.error_messages: SimpleQueue[tuple[str, str]] = SimpleQueue()
+        self.fatal_error_messages: SimpleQueue[tuple[str, str]] = SimpleQueue()
+        self.fatal_error_window: CTkMessagebox | None = None
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -69,25 +70,34 @@ class Root(customtkinter.CTk):
         self.bind("<<ReportError>>", lambda event: self.report_error())
         self.bind("<<ReportFatalError>>", lambda event: self.report_fatal_error())
 
-        self.bind("<<CheckNeedToDestroy>>", lambda event: self.check_need_to_destroy())
-
     def report_error(self):
         title, message = self.error_messages.get()
-        ErrorHandler(master=self, title=title, message=message)
+        CTkMessagebox(master=self, title=title, message=message, icon="warning", width=500, height=200,
+                      button_height=30, justify="center")
 
     def report_fatal_error(self):
-        self.need_to_destroy = True
         title, message = self.fatal_error_messages.get()
-        FatalErrorHandler(master=self, title=title, message=message)
+        if self.fatal_error_window is None:
+            self.fatal_error_window = CTkMessagebox(master=self, title=title, icon="cancel", width=500, height=200,
+                                                    button_height=30, justify="center",
+                                                    message=f"The program will be closed due to the error:\n{message}")
+            self.fatal_error_window.grab_set()
+            self.stop_working_and_destroy_parsers()
+        elif self.fatal_error_window.winfo_exists():
+            self.fatal_error_window.focus()
 
     def report_tkinter_error(self, *_):
-        FatalErrorHandler(master=self, title="GUI Error", message=traceback.format_exc(limit=0))
-        self.after(1000, self.exit)
+        self.fatal_error_messages.put(("GUI Error", traceback.format_exc(limit=0)))
+        self.report_fatal_error()
 
-    def check_need_to_destroy(self):
-        if self.need_to_destroy:
-            self.exit()
+    def stop_working_and_destroy_parsers(self):
+        if self.fatal_error_window is not None and self.fatal_error_window.winfo_exists():
+            self.fatal_error_window.wait_window()
+
+        AppClosingNotification(master=self, master_width=self.winfo_width(), master_height=self.winfo_height(),
+                               master_x=self.winfo_x(), master_y=self.winfo_y())
+        self.controller.stop_parsers()
+        self.after(100, self.controller.del_parsers)
 
     def exit(self):
-        self.controller.del_parsers()
-        self.quit()
+        self.destroy()

@@ -10,6 +10,7 @@ class Controller:
     def __init__(self, master, data: DataClass):
         self.data = data
         self.master = master
+        self.thread = Thread()
 
         self.connector = Connector(master=self.master, data=self.data,
                                    callback=lambda future, number: self.callback(future, number,
@@ -19,28 +20,40 @@ class Controller:
                                                                                is_connection_phase=False))
 
     def wrapper(self, func: Callable, *args):
-        thread = Thread(target=lambda: (
+        self.thread = Thread(target=lambda: (
             self.master.event_generate("<<DisableElems>>"),
             func(*args),
             self.master.event_generate("<<EnableElems>>"),
-            self.master.event_generate("<<CheckNeedToDestroy>>", when="tail"),
         ), daemon=True)
-        thread.start()
+        self.thread.start()
 
     def init_parsers(self):
         with ThreadPoolExecutor() as executor:
             futures = []
-            for parser in self.data.parsers:
-                futures.append(executor.submit(parser))
+            for parser_class in self.data.parsers_classes:
+                futures.append(executor.submit(parser_class))
 
             for i, future in enumerate(as_completed(futures)):
-                self.data.parsers[i] = future.result()
+                try:
+                    self.data.parsers.append(future.result())
+                except Exception as e:
+                    self.master.fatal_error_messages.put(("Initialization error", repr(e)))
+                    self.master.event_generate("<<ReportFatalError>>")
+
+    def stop_parsers(self):
+        for parser in self.data.parsers:
+            parser.stop_event.set()
 
     def del_parsers(self):
-        with ThreadPoolExecutor() as executor:
-            futures = []
-            for parser in self.data.parsers:
-                futures.append(executor.submit(parser.__del__))
+        if self.thread.is_alive():
+            self.master.after(100, self.del_parsers)
+        else:
+            with ThreadPoolExecutor() as executor:
+                futures = []
+                for parser in self.data.parsers:
+                    futures.append(executor.submit(parser.__del__))
+
+            self.master.exit()
 
     def connect(self):
         self.wrapper(self.connector.connect)
@@ -52,7 +65,7 @@ class Controller:
         self.wrapper(self.searcher.search, part_numbers_str)
 
     def stop_search(self):
-        self.searcher.stop_search_flag = True
+        self.searcher.stop_search_flag.set()
 
     def callback(self, future: Future, website: str, is_connection_phase: bool):
         self.master.event_generate(f"<<StopProgressBar-{website}>>")

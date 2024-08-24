@@ -1,9 +1,8 @@
 import customtkinter
 from Logic.data_file import DataClass
-from GUI.frame import Frame
 
 
-class WebsitesListFrame(Frame):
+class WebsitesListFrame(customtkinter.CTkScrollableFrame):
     def __init__(self, master, data: DataClass, **kwargs):
         super().__init__(master=master, **kwargs)
 

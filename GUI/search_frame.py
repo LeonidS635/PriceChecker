@@ -1,4 +1,3 @@
-import ctypes
 import customtkinter
 from GUI.frame import Frame
 from Logic.controller import Controller
@@ -30,7 +29,7 @@ class SearchFrame(Frame):
         if self.search_button not in self.interactive_elements:
             self.interactive_elements.append(self.search_button)
         part_numbers_str = self.part_number_input.get()
-        self.controller.search(part_numbers_str)
+        self.after(100, self.controller.search, part_numbers_str)
 
     def disable_all_interactive_elements(self):
         super().disable_all_interactive_elements()
