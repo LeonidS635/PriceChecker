@@ -37,7 +37,7 @@ class Controller:
                 try:
                     self.data.parsers.append(future.result())
                 except Exception as e:
-                    self.master.fatal_error_messages.put(("Initialization error", repr(e)))
+                    self.master.fatal_error_messages.put(("Initialization error", str(e)))
                     self.master.event_generate("<<ReportFatalError>>")
 
     def stop_parsers(self):
@@ -73,7 +73,7 @@ class Controller:
         try:
             status = future.result()
         except Exception as e:
-            self.master.error_messages.put((website, repr(e)))
+            self.master.error_messages.put((website, str(e)))
             self.master.event_generate("<<ReportError>>")
         else:
             if status != Status.OK:

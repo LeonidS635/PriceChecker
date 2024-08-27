@@ -10,8 +10,9 @@ class FiltersWindow(customtkinter.CTkToplevel):
         self.data = data
 
         self.title("Search filters")
-        self.geometry("400x440")
-        self.resizable(False, False)
+        self.geometry("400x640")
+        self.resizable(False, True)
+        self.minsize(width=400, height=640)
         self.attributes("-topmost", True)
 
         self.columnconfigure((0, 1), weight=1)
@@ -31,9 +32,9 @@ class FiltersWindow(customtkinter.CTkToplevel):
             self, text="Select all", command=self.select_all_conditions)
         self.select_all_conditions_button.grid(row=1, column=1, padx=(5, 10), pady=(5, 5))
 
-        self.websites_frame = customtkinter.CTkScrollableFrame(master=self, corner_radius=0, height=300, width=150)
+        self.websites_frame = customtkinter.CTkScrollableFrame(master=self, corner_radius=0, height=500, width=150)
         self.websites_frame.grid(row=2, column=0, sticky="nsew", pady=(5, 5))
-        self.conditions_frame = customtkinter.CTkFrame(master=self, corner_radius=0, height=300, width=250)
+        self.conditions_frame = customtkinter.CTkFrame(master=self, corner_radius=0, height=500, width=250)
         self.conditions_frame.grid(row=2, column=1, sticky="nsew", pady=(5, 5))
 
         self.checkboxes_websites = []
@@ -41,15 +42,22 @@ class FiltersWindow(customtkinter.CTkToplevel):
         for i, website_name in enumerate(self.data.websites_names):
             self.checkboxes_websites.append(
                 customtkinter.CTkCheckBox(master=self.websites_frame, text=website_name, corner_radius=12))
-            self.checkboxes_websites[i].grid(row=i, column=0, padx=(10, 10), pady=(5, 5), sticky="w")
+            self.checkboxes_websites[i].grid(padx=(10, 10), pady=(5, 5), sticky="w")
 
             if self.data.websites_to_search[website_name]:
                 self.checkboxes_websites[i].select()
+        for i, excel_file_name in enumerate(self.data.loaded_excel_files.keys()):
+            self.checkboxes_websites.append(
+                customtkinter.CTkCheckBox(master=self.websites_frame, text=excel_file_name, corner_radius=12))
+            self.checkboxes_websites[-1].grid(padx=(10, 10), pady=(5, 5), sticky="w")
+
+            if self.data.websites_to_search[excel_file_name]:
+                self.checkboxes_websites[-1].select()
 
         for i, condition in enumerate(self.data.conditions):
             self.checkboxes_conditions.append(
                 customtkinter.CTkCheckBox(self.conditions_frame, text=condition, corner_radius=12))
-            self.checkboxes_conditions[i].grid(row=i, column=1, padx=(10, 10), pady=(5, 5), sticky="w")
+            self.checkboxes_conditions[i].grid(padx=(10, 10), pady=(5, 5), sticky="w")
 
             if self.data.conditions_to_search[condition]:
                 self.checkboxes_conditions[i].select()
@@ -86,10 +94,10 @@ class FiltersWindow(customtkinter.CTkToplevel):
         self.select_all_conditions_button.configure(command=self.select_all_conditions)
 
     def confirm(self):
-        for i, website_name in enumerate(self.data.websites_names):
-            self.data.websites_to_search[website_name] = self.checkboxes_websites[i].get()
-        for i, condition in enumerate(self.data.conditions):
-            self.data.conditions_to_search[condition] = self.checkboxes_conditions[i].get()
+        for i, checkbox in enumerate(self.checkboxes_websites):
+            self.data.websites_to_search[checkbox.cget("text")] = checkbox.get()
+        for i, checkbox in enumerate(self.checkboxes_conditions):
+            self.data.conditions_to_search[checkbox.cget("text")] = checkbox.get()
 
         self.master.event_generate("<<UpdateSearchResults>>")
         self.destroy()

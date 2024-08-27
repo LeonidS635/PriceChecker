@@ -15,7 +15,7 @@ class DataClass:
     def __init__(self):
         self.parsers = []
         self.parsers_classes = []
-        self.loaded_excel_files_data: dict[str, list[dict[str, str]]] = {}
+        self.loaded_excel_files: dict[str, str] = {}
         self.websites_names: list[str] = []
         self.websites_names_with_captcha_for_login: list[str] = ["Dasi"]
         self.conditions: list[str] = ["New surplus", "New", "Overhaul", "As removed", "Serviceable"]
