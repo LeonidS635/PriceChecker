@@ -53,12 +53,12 @@ class Aerobay(ParserRequests):
                 description, condition, qty, _, price, _, lead_time, _, _ = part.select(
                     "div[class*='product_infos_inside_product_box_list']")
 
-                self.product_info["part number"] = part.select_one("strong").text
-                self.product_info["description"] = description.select_one("p").text
-                self.product_info["QTY"] = qty.select_one("strong").text
+                self.product_info["part number"] = part.text
+                self.product_info["description"] = description.text
+                self.product_info["QTY"] = qty.text
                 self.product_info["price"] = '$' + price_parts[1].text + '.' + price_parts[2].text if (
                     price_parts := price.select_one("span > span").findChildren()) else ""
-                self.product_info["condition"] = condition.select_one("span").text
+                self.product_info["condition"] = condition.text
                 self.product_info["lead time"] = lead_time.text
 
                 search_results.append(deepcopy(self.product_info))

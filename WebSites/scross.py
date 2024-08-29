@@ -38,26 +38,30 @@ class Scross(ParserRequests):
         self.product_info["other information"] = f"interchanges: {interchanges}" if interchanges else ""
 
         table = sections[2].select_one("table")
-        cols_number = len(table.select("tr:nth-of-type(1) > td"))
+        cols_number = len(table.select("tr:nth-of-type(1) > td")) if table is not None else 0
 
-        if warehouses_el := table.select("th:-soup-contains('Warehouse') ~ td > span[class='tooltiptext']"):
-            warehouses = [warehouse.text for warehouse in warehouses_el]
-        elif warehouses_el := table.select("th:-soup-contains('Warehouse') ~ td"):
-            warehouses = [warehouse.text for warehouse in warehouses_el]
+        if table is not None:
+            if warehouses_el := table.select("th:-soup-contains('Warehouse') ~ td > span[class='tooltiptext']"):
+                warehouses = [warehouse.text for warehouse in warehouses_el]
+            elif warehouses_el := table.select("th:-soup-contains('Warehouse') ~ td"):
+                warehouses = [warehouse.text for warehouse in warehouses_el]
+            else:
+                warehouses = ["" for _ in range(cols_number)]
+
+            availabilities = [availability.text.split(": ")[-1] for availability in availabilities_el] if (
+                availabilities_el := table.select("th:-soup-contains('Availability') ~ td")) else ["" for _ in
+                                                                                                   range(cols_number)]
+            qtys = [qty.text for qty in qtys_el] if (
+                qtys_el := table.select("th:-soup-contains('Qty Available') ~ td")) else ["" for _ in
+                                                                                          range(cols_number)]
+
+            for col in range(cols_number):
+                self.product_info["QTY"] = qtys[col]
+                self.product_info["lead time"] = availabilities[col]
+                self.product_info["warehouse"] = warehouses[col]
+
+                search_results.append(deepcopy(self.product_info))
         else:
-            warehouses = ["" for _ in range(cols_number)]
-
-        availabilities = [availability.text.split(": ")[-1] for availability in availabilities_el] if (
-            availabilities_el := table.select("th:-soup-contains('Availability') ~ td")) else ["" for _ in
-                                                                                               range(cols_number)]
-        qtys = [qty.text for qty in qtys_el] if (
-            qtys_el := table.select("th:-soup-contains('Qty Available') ~ td")) else ["" for _ in range(cols_number)]
-
-        for col in range(cols_number):
-            self.product_info["QTY"] = qtys[col]
-            self.product_info["lead time"] = availabilities[col]
-            self.product_info["warehouse"] = warehouses[col]
-
             search_results.append(deepcopy(self.product_info))
 
         return self.status

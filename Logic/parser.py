@@ -71,19 +71,21 @@ class ParserRequests(Parser):
             self.response = request(timeout=self.delay, **kwargs)
             self.response.raise_for_status()
         except Timeout:
-            self.status = self.status.Time_error
+            self.status = Status.Time_error
         except ConnectionError:
-            self.status = self.status.Connection_error
+            self.status = Status.Connection_error
         except HTTPError:
             if self.response.status_code == 429:
                 sleep(int(self.response.headers['Retry-After']))
                 return self.request_wrapper(request, **kwargs)
+            elif self.response.status_code == 401:
+                self.status = Status.Login_error
             else:
-                self.status = self.status.Connection_error
+                self.status = Status.Connection_error
         except RequestException:
-            self.status = self.status.Other
+            self.status = Status.Other
         else:
-            self.status = self.status.OK
+            self.status = Status.OK
             return True
         return False
 
