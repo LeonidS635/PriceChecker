@@ -100,7 +100,6 @@ class Aerospareparts(ParserRequests):
                         page = BeautifulSoup(self.response.text, "lxml")
                         payload = {
                             "PN": page.select_one("input[name='PN']")["value"],
-                            "Description": page.select_one("input[name='Description']")["value"],
                             "UOM": page.select_one("input[name='UOM']")["value"],
                             "COND": page.select_one("input[name='COND']")["value"],
                             "Country": page.select_one("input[name='Country']")["value"],

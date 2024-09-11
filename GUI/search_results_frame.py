@@ -31,7 +31,7 @@ class SearchResultsFrame(Frame):
         for _, product_info_list in self.data.all_search_results:
             for product_info in product_info_list:
                 for header in self.data.headers:
-                    product_info[header] = product_info.setdefault(header, "").strip()
+                    product_info[header] = str(product_info.setdefault(header, "")).strip()
 
     def print_search_results(self):
         self.beautify_search_results()
