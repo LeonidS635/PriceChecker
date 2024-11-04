@@ -23,11 +23,12 @@ class Allaero(ParserRequests):
 
         self.product_info["part number"] = page.select_one("span[itemprop='identifier']").text
         self.product_info["description"] = page.select_one("span[itemprop='name']").text
-        self.product_info["condition"] = condition if ((
-            condition := page.select_one("td[data-title='Condition:']").text)) != "Any" else ""
-        self.product_info["lead time"] = availability if ((
-            availability := page.select_one("td[data-title='Release:']").text)) != "Any" else ""
-        self.product_info["QTY"] = page.select_one("td[data-title='Stock:']").text
+        self.product_info["condition"] = condition.text if (condition := page.select_one(
+            "td[data-title='Condition / Condition']")) is not None and condition.text != "Any" else ""
+        self.product_info["lead time"] = availability.text if (availability := page.select_one(
+            "td[data-title='Release:']")) is not None and availability.text != "Any" else ""
+        self.product_info["QTY"] = qty.text.split(maxsplit=1)[0] if (qty := page.select_one(
+            "td[data-title='Stock:']")) is not None else ""
 
         alternatives = [part.select("a")[1].select_one("span").text.strip() for part in
                         page.select("div[class$='alternate-part']")]

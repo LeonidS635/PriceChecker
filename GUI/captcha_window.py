@@ -41,7 +41,7 @@ class CaptchaWindow(customtkinter.CTkToplevel):
                                                                  text=""))
 
         Thread(target=self.download_captcha, daemon=True).start()
-        self.after(10000, self.get_captcha_code)
+        self.after(60000, self.get_captcha_code)
 
     def download_captcha(self):
         self.captcha = self.parser.download_captcha()
