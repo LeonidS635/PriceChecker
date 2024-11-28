@@ -97,7 +97,7 @@ class Proponent(ParserSelenium):
                                                      ).text).find("Proponent") == -1):
                 self.product_info["part number"] = self.request_wrapper(
                     self.driver.find_element, by=By.XPATH,
-                    value="//td[@aria-describedby='jQGridDemo_Cust_part']").text
+                    value="//td[@aria-describedby='jQGridDemo_Cust_part_copy']").text
                 self.product_info["description"] = description
                 self.product_info["price"] = self.request_wrapper(
                     self.driver.find_element, by=By.XPATH, value="//td[@aria-describedby='jQGridDemo_Price']").text
