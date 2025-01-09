@@ -40,7 +40,7 @@ class Proponent(ParserSelenium):
     def login_function(self, login: str, password: str) -> Status:
         try:
             self.request_wrapper(self.driver.delete_all_cookies)
-            self.request_wrapper(self.driver.get, url="https://procart.proponent.com/")
+            self.request_wrapper(self.driver.get, url="https://procart.proponent.com/Login.aspx")
 
             input_user_name: WebElement = self.request_wrapper(self.driver.find_element, by=By.XPATH,
                                                                value="//input[@name='ctl00$MainContent$txtUserName']")

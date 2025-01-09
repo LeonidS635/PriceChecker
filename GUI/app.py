@@ -23,6 +23,7 @@ class Root(customtkinter.CTk):
         self.error_messages: SimpleQueue[tuple[str, str]] = SimpleQueue()
         self.fatal_error_messages: SimpleQueue[tuple[str, str]] = SimpleQueue()
         self.fatal_error_window: CTkMessagebox | None = None
+        self.error_window: CTkMessagebox | None = None
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -71,9 +72,13 @@ class Root(customtkinter.CTk):
         self.bind("<<ReportFatalError>>", lambda event: self.report_fatal_error())
 
     def report_error(self):
-        title, message = self.error_messages.get()
-        CTkMessagebox(master=self, title=title, message=message, icon="warning", width=500, height=200,
-                      button_height=30, justify="center")
+        if self.error_window is None or not self.error_window.winfo_exists():
+            title, message = self.error_messages.get()
+            self.error_window = CTkMessagebox(master=self, title=title, message=message, icon="warning", width=500,
+                                              height=200, button_height=30, justify="center")
+            self.error_window.wait_visibility()
+        else:
+            self.error_window.focus()
 
     def report_fatal_error(self):
         title, message = self.fatal_error_messages.get()
