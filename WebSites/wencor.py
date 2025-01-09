@@ -8,6 +8,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.common.exceptions import NoSuchElementException
 from subprocess import CREATE_NO_WINDOW
+import time
 
 
 class Wencor(ParserSelenium):
@@ -44,6 +45,7 @@ class Wencor(ParserSelenium):
 
             self.request_wrapper(input_user_name.send_keys, login)
             self.request_wrapper(input_password.send_keys, password)
+            time.sleep(0.5)
             self.request_wrapper(login_button.click)
 
             login_error_message: WebElement | None = self.request_wrapper(self.driver.find_element,
