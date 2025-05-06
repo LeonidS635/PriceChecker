@@ -18,9 +18,10 @@ class Airpowerinc(ParserRequests):
             return self.status
         page = BeautifulSoup(self.response.text, "lxml")
 
-        product_id = page.select_one("div[id='product-ribbon-info']")["data-productid"]
-        if product_id == '0':
+        product_id_tag = page.select_one("div[class='sku']").select_one("span[class='value']")
+        if product_id_tag is None:
             return self.status
+        product_id = product_id_tag["id"].removeprefix("sku-")
 
         data = dict()
         data["__RequestVerificationToken"] = page.select_one("input[name='__RequestVerificationToken']")["value"]

@@ -23,11 +23,12 @@ class Banner(ParserRequests):
             return self.status
 
         for product in self.response.json()["data"]["partsList"]:
-            self.product_info["part number"] = product["product"]["name"]
-            self.product_info["description"] = product["comment"]
-            self.product_info["condition"] = condition if (condition := product["condition"]) is not None else ""
-            self.product_info["QTY"] = qty if (qty := product["quantity"]) != 0 else ""
+            if product["product"]["name"].lower() == number.lower():
+                self.product_info["part number"] = product["product"]["name"]
+                self.product_info["description"] = product["comment"]
+                self.product_info["condition"] = condition if (condition := product["condition"]) is not None else ""
+                self.product_info["QTY"] = product["quantity"]
 
-            search_results.append(deepcopy(self.product_info))
+                search_results.append(deepcopy(self.product_info))
 
         return self.status

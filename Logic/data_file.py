@@ -17,7 +17,7 @@ class DataClass:
         self.parsers_classes = []
         self.loaded_excel_files: dict[str, str] = {}
         self.websites_names: list[str] = []
-        self.websites_names_with_captcha_for_login: list[str] = ["Dasi"]
+        self.websites_names_with_captcha_for_login: list[str] = []
         self.conditions: list[str] = ["New surplus", "New", "Overhaul", "As removed", "Serviceable"]
 
         for file_name in listdir("PriceChecker-master/WebSites"):

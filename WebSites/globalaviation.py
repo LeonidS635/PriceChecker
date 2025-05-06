@@ -23,6 +23,7 @@ class Globalaviation(ParserSelenium):
         super().__init__(options=options, service=chrome_service)
 
     def login_function(self, login: str, password: str) -> Status:
+        login_url = "https://globalaviation.aero/gappcom-2/"
         try:
             self.request_wrapper(self.driver.delete_all_cookies)
             self.request_wrapper(self.driver.get, url="https://globalaviation.aero/gappcom-2/")
@@ -38,12 +39,7 @@ class Globalaviation(ParserSelenium):
             self.request_wrapper(input_password.send_keys, password)
             self.request_wrapper(login_button.click)
 
-            login_error_message: WebElement | None = self.request_wrapper(self.driver.find_element,
-                                                                          exceptions_to_ignore=(
-                                                                              NoSuchElementException,),
-                                                                          by=By.XPATH,
-                                                                          value="//span[@class='rf-msgs-sum']")
-            if login_error_message is not None:
+            if self.driver.current_url.startswith(login_url):
                 self.status = Status.Login_error
                 self.logged_in = False
             else:
@@ -71,7 +67,7 @@ class Globalaviation(ParserSelenium):
             self.request_wrapper(part_number_input.send_keys, number)
 
             search_button: WebElement = self.request_wrapper(self.driver.find_element, by=By.XPATH,
-                                                             value="//input[@name='gaform:j_idt99']")
+                                                             value="//input[@name='gaform:j_idt117']")
             self.request_wrapper(search_button.click)
             self.request_wrapper(WebDriverWait(self.driver, self.delay).until,
                                  method=ec.invisibility_of_element_located((By.XPATH, "//div[@id='loading_content']")))

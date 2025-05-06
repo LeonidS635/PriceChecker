@@ -57,7 +57,7 @@ class Satair(ParserRequests):
         for batch_index in range((products_number + batch_size - 1) // batch_size):
             info_params = {"productPriceRequests": []}
             for i in range(batch_index * batch_size, min(products_number, (batch_index + 1) * batch_size)):
-                if products[i]["ManufacturerAid"] != number:
+                if products[i]["ManufacturerAid"].upper() != number.upper():
                     break
 
                 info_params["productPriceRequests"].append({
@@ -76,6 +76,9 @@ class Satair(ParserRequests):
                 return self.status
 
             for i in range(batch_index * batch_size, min(products_number, (batch_index + 1) * batch_size)):
+                if products[i]["ManufacturerAid"].upper() != number.upper():
+                    break
+
                 batch_int_index = i - batch_index * batch_size
 
                 self.reset_product_info()
@@ -93,15 +96,9 @@ class Satair(ParserRequests):
                         (warehouse_dict := add_info_products["Data"][batch_int_index].get(
                             "Warehouse")) is not None) else ""
 
-                if not self.request_wrapper(self.session.get, url=interchanges_url,
-                                            data={"sku": self.product_info["part number"]}, cookies=self.auth_info):
-                    return self.status
-
-                interchanges_data = self.response.json()
                 interchanges_list = []
-                if interchanges_data:
-                    for interchangeable in interchanges_data["Data"]:
-                        interchanges_list.append(interchangeable["Sku"])
+                for interchangeable in products[i].get("SatairInterchangeables", []):
+                    interchanges_list.append(f"{interchangeable["PartNumber"]}:{interchangeable['CageCode']}")
                 interchanges = " ; ".join(interchanges_list) if interchanges_list else ""
                 self.product_info["other information"] = f"interchanges: {interchanges}" if interchanges else ""
 

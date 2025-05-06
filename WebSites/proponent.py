@@ -107,8 +107,11 @@ class Proponent(ParserSelenium):
                 self.product_info["condition"] = "New"
                 if (lead_time := self.request_wrapper(
                         self.driver.find_element, exceptions_to_ignore=(NoSuchElementException,), by=By.XPATH,
-                        value="//ul[@class='gridnotes']/li[contains(text(), 'Lead time')]")) is not None:
-                    self.product_info["lead time"] = lead_time.text.split("Lead time is")[1]
+                        value="//ul[@class='gridnotes']"
+                              "/li[contains("
+                              "translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'),"
+                              "'lead time')]")) is not None:
+                    self.product_info["lead time"] = lead_time.text.lower().split("lead time is")[1]
 
                 self.request_wrapper(WebDriverWait(self.driver, self.delay).until,
                                      method=ec.presence_of_element_located(
