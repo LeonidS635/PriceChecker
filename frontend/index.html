@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aircraft Parts Comparison Service</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+    <!-- Header with service name and controls -->
+    <header class="header">
+        <div class="header-left">
+            <h1>Aircraft Parts Comparison</h1>
+        </div>
+        <div class="header-right">
+            <button id="settingsBtn" class="btn btn-secondary">
+                <span class="icon">⚙️</span>
+                Settings
+            </button>
+            <button id="portalManagementBtn" class="btn btn-secondary">
+                <span class="icon">🔗</span>
+                Portal Management
+            </button>
+            <button id="excelManagementBtn" class="btn btn-secondary">
+                <span class="icon">📁</span>
+                Excel Files
+            </button>
+        </div>
+    </header>
+
+    <!-- Search panel -->
+    <div class="search-panel">
+        <div class="search-input-group">
+            <input
+                    type="text"
+                    id="partNumbersInput"
+                    placeholder="Enter part numbers (separated by commas, spaces, or line breaks)"
+                    class="search-input"
+            >
+            <button id="filtersBtn" class="btn btn-secondary">
+                <span class="icon">🔧</span>
+                Filters
+            </button>
+            <button id="searchBtn" class="btn btn-primary">
+                <span class="icon">🔍</span>
+                Search
+            </button>
+        </div>
+
+        <!-- Progress bar -->
+        <div id="progressContainer" class="progress-container" style="display: none;">
+            <div class="progress-info">
+                <span id="progressText">Searching...</span>
+                <span id="progressStats">0 of 0</span>
+                <button id="cancelSearchBtn" class="btn btn-small btn-secondary">Cancel</button>
+            </div>
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results section -->
+    <div class="results-section">
+        <!-- Export button -->
+        <div class="export-controls">
+            <button id="exportBtn" class="btn btn-secondary" style="display: none;">
+                <span class="icon">📤</span>
+                Export Selected
+            </button>
+            <button id="selectModeBtn" class="btn btn-secondary">
+                <span class="icon">☑️</span>
+                Select Mode
+            </button>
+        </div>
+
+        <!-- Results table -->
+        <div class="results-container">
+            <div id="resultsTable" class="results-table-container">
+                <div class="no-results">
+                    <p>Enter part numbers and click "Search" to begin</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error/notification panel trigger -->
+    <div id="errorPanelTrigger" class="error-panel-trigger">
+        <button id="errorToggleBtn" class="error-toggle-btn">
+            <span class="icon">⚠️</span>
+            <span id="errorCount" class="error-count">0</span>
+        </button>
+    </div>
+
+    <!-- Error/notification panel (sidebar) -->
+    <div id="errorPanel" class="error-panel">
+        <div class="error-panel-header">
+            <h3>Notifications</h3>
+            <div class="error-panel-controls">
+                <button id="clearAllErrors" class="btn btn-small">Clear All</button>
+                <button id="closeErrorPanel" class="btn btn-small">×</button>
+            </div>
+        </div>
+        <div id="errorList" class="error-list"></div>
+    </div>
+</div>
+
+<!-- Modal Windows -->
+
+<!-- Filters Modal -->
+<div id="filtersModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Search Filters</h2>
+            <button class="close-btn" onclick="closeModal('filtersModal')">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="filter-section">
+                <h3>Portals</h3>
+                <div id="portalFilters" class="checkbox-group"></div>
+            </div>
+            <div class="filter-section">
+                <h3>Conditions</h3>
+                <div id="conditionFilters" class="checkbox-group"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('filtersModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="applyFilters()">Apply</button>
+        </div>
+    </div>
+</div>
+
+<!-- Portal Management Modal -->
+<div id="portalManagementModal" class="modal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h2>Portal Management</h2>
+            <button class="close-btn" onclick="closeModal('portalManagementModal')">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="portal-management-controls">
+                <button id="selectAllPortalsBtn" class="btn btn-secondary btn-small">Select All</button>
+                <button id="deselectAllPortalsBtn" class="btn btn-secondary btn-small">Deselect All</button>
+            </div>
+            <div id="portalLoginList" class="portal-login-list"></div>
+            <div id="loginStatus" class="login-status"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('portalManagementModal')">Cancel</button>
+            <button id="performLoginBtn" class="btn btn-primary" onclick="performLogin()">Login</button>
+            <button id="cancelLoginBtn" class="btn btn-secondary" style="display: none;" onclick="cancelLogin()">Cancel
+                Login
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Excel Management Modal -->
+<div id="excelManagementModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Excel File Management</h2>
+            <button class="close-btn" onclick="closeModal('excelManagementModal')">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="excel-upload-section">
+                <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display: none;">
+                <button id="uploadExcelBtn" class="btn btn-primary">
+                    <span class="icon">📤</span>
+                    Upload Excel File
+                </button>
+            </div>
+            <div class="excel-files-section">
+                <h3>Uploaded Files</h3>
+                <div id="excelFilesList" class="excel-files-list"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('excelManagementModal')">Close</button>
+        </div>
+    </div>
+</div>
+<!-- Settings Modal -->
+<div id="settingsModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Settings</h2>
+            <button class="close-btn" onclick="closeModal('settingsModal')">×</button>
+        </div>
+        <div class="modal-body">
+            <p>Settings will be added later</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('settingsModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Fatal Error Overlay -->
+<div id="fatalErrorOverlay" class="fatal-error-overlay" style="display: none;">
+    <div class="fatal-error-content">
+        <h2>Critical Error</h2>
+        <p id="fatalErrorMessage"></p>
+        <button class="btn btn-primary" onclick="location.reload()">Reload Application</button>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="src/config.js"></script>
+<script src="src/api.js"></script>
+<script src="src/ui.js"></script>
+<script src="src/app.js"></script>
+</body>
+</html>

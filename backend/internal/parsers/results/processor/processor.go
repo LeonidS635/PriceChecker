@@ -1,0 +1,39 @@
+package processor
+
+import (
+	"context"
+	"io"
+
+	"github.com/LeonidS635/PriceChecker/backend/internal/domain"
+	"github.com/LeonidS635/PriceChecker/backend/internal/dto"
+	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/results"
+	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/workflow/manager"
+)
+
+type ResultsProcessor struct {
+	m manager.Manager
+}
+
+func NewResultsProcessor(ctx context.Context) ResultsProcessor {
+	return ResultsProcessor{m: manager.NewManager(ctx)}
+}
+
+func (rp ResultsProcessor) ProcessLogin(
+	ctx context.Context, portalIDs []domain.PortalID,
+) map[domain.PortalID]results.LoginResult {
+	return rp.m.Login(ctx, portalIDs)
+}
+
+func (rp ResultsProcessor) ProcessSearch(
+	ctx context.Context, partNumber string, filters dto.Filter,
+) map[domain.PortalID]results.SearchResult {
+	promises := rp.m.ScheduleSearch(ctx, partNumber, filters.PortalIDs)
+	res := Aggregate(ctx, promises)
+	filteredResults := Filter(res, filters)
+
+	return filteredResults
+}
+
+func (rp ResultsProcessor) ProcessAddingExcelFile(ctx context.Context, name string, content io.Reader) error {
+	return rp.m.AddExcelFile(ctx, name, content)
+}
