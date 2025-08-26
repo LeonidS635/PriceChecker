@@ -10,6 +10,12 @@ const (
 	PortalAirPowerInc
 	PortalAJWEventory
 	PortalAllAero
+	PortalBoeingShop
+	PortalDasi
+	PortalLASAero
+	PortalSatAir
+	PortalSCross
+	PortalSkySpares
 )
 
 type Portal struct {
@@ -23,6 +29,12 @@ var AllPortals = []Portal{
 	{ID: PortalAirPowerInc, Name: "AirPowerInc"},
 	{ID: PortalAJWEventory, Name: "AJWEventory"},
 	{ID: PortalAllAero, Name: "AllAero"},
+	{ID: PortalBoeingShop, Name: "BoeingShop"},
+	{ID: PortalDasi, Name: "Dasi"},
+	{ID: PortalLASAero, Name: "LASAero"},
+	{ID: PortalSatAir, Name: "SatAir"},
+	{ID: PortalSCross, Name: "SCross"},
+	{ID: PortalSkySpares, Name: "SkySpares"},
 }
 
 var (

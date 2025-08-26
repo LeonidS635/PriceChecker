@@ -1,6 +1,17 @@
-package airpowerinc
+package aerobay
 
-import "github.com/LeonidS635/PriceChecker/backend/internal/dto"
+import (
+	"github.com/LeonidS635/PriceChecker/backend/internal/dto"
+)
+
+type loginSharedState struct {
+	token string
+	err   error
+}
+
+func newLoginSharedState() *loginSharedState {
+	return &loginSharedState{}
+}
 
 type searchSharedState struct {
 	offers []dto.Offer

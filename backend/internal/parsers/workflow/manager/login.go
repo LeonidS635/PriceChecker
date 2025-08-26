@@ -44,8 +44,6 @@ func (m Manager) Login(ctx context.Context, portalIDs []domain.PortalID) map[dom
 							mu.Unlock()
 						}
 					}()
-				} else {
-					errors[portalID] = fmt.Errorf("worker for %q is already running", portals.PortalNameByID[portalID])
 				}
 			} else {
 				errors[portalID] = fmt.Errorf("spawner for %q not found", portals.PortalNameByID[portalID])

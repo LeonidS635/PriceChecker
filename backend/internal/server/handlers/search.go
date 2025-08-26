@@ -47,6 +47,7 @@ func (h Handler) Search(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
+	mu := &sync.Mutex{}
 	wg := &sync.WaitGroup{}
 	for _, pn := range req.PartNumbers {
 		wg.Add(1)
@@ -72,10 +73,12 @@ func (h Handler) Search(w http.ResponseWriter, r *http.Request) {
 				resp = append(resp, status)
 			}
 
+			mu.Lock()
 			if err := encoder.Encode(resp); err != nil {
 				// TODO: what should I do in this case?
 			}
 			flusher.Flush()
+			mu.Unlock()
 		}()
 	}
 	wg.Wait()

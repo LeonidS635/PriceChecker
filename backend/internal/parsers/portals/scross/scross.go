@@ -1,21 +1,21 @@
-package airpowerinc
+package scross
 
 import (
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers"
 	"github.com/gocolly/colly/v2"
 )
 
-type AirPowerInc struct {
+type SCross struct {
 	searchC     *colly.Collector
 	searchState *searchSharedState
 }
 
-func NewAirPowerInc(baseC *colly.Collector) parsers.Parser {
-	a := AirPowerInc{
+func NewSCross(baseC *colly.Collector) parsers.Parser {
+	s := SCross{
 		searchC:     baseC,
 		searchState: newSearchSharedState(),
 	}
-	a.configureSearch()
+	s.configureSearch()
 
-	return a
+	return s
 }

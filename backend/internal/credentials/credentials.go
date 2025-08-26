@@ -18,22 +18,4 @@ func init() {
 	if err := json.Unmarshal(rowData, &Credentials); err != nil {
 		log.Fatal(err)
 	}
-	//Credentials = map[domain.PortalID]dto.Credentials{
-	//	0: {
-	//		Username: "sales@airpartsol.com",
-	//		Password: "ABSD2k!",
-	//	},
-	//	1: {
-	//		Username: "",
-	//		Password: "",
-	//	},
-	//	2: {
-	//		Username: "",
-	//		Password: "",
-	//	},
-	//	3: {
-	//		Username: "",
-	//		Password: "",
-	//	},
-	//}
 }

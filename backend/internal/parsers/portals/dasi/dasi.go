@@ -1,21 +1,21 @@
-package airpowerinc
+package dasi
 
 import (
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers"
 	"github.com/gocolly/colly/v2"
 )
 
-type AirPowerInc struct {
+type Dasi struct {
 	searchC     *colly.Collector
 	searchState *searchSharedState
 }
 
-func NewAirPowerInc(baseC *colly.Collector) parsers.Parser {
-	a := AirPowerInc{
+func NewDasi(baseC *colly.Collector) parsers.Parser {
+	d := Dasi{
 		searchC:     baseC,
 		searchState: newSearchSharedState(),
 	}
-	a.configureSearch()
+	d.configureSearch()
 
-	return a
+	return d
 }

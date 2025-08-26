@@ -1,6 +1,8 @@
-package airpowerinc
+package boeingshop
 
-import "github.com/LeonidS635/PriceChecker/backend/internal/dto"
+import (
+	"github.com/LeonidS635/PriceChecker/backend/internal/dto"
+)
 
 type searchSharedState struct {
 	offers []dto.Offer

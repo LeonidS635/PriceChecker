@@ -6,15 +6,16 @@ import (
 )
 
 type AJWEventory struct {
-	searchC     *colly.Collector
-	partC       *colly.Collector
+	searchC *colly.Collector
+	partC   *colly.Collector
+
 	searchState *searchSharedState
 }
 
 func NewAJWEventory(baseC *colly.Collector) parsers.Parser {
 	a := AJWEventory{
 		searchC:     baseC,
-		partC:       baseC,
+		partC:       baseC.Clone(),
 		searchState: newSearchSharedState(),
 	}
 	a.configureSearch()

@@ -8,25 +8,24 @@ import (
 	"github.com/gocolly/colly/v2"
 )
 
-// TODO: this site uses reCAPTCHA, maybe I need another way to parse (rod)
-
 func (a AllAero) configureLogin() {
+	// Parse verification token with GET request
 	a.tokenC.OnHTML(
 		"input[name=\"__RequestVerificationToken\"]", func(e *colly.HTMLElement) {
 			a.loginState.token = e.Attr("value")
 		},
 	)
 	a.tokenC.OnError(
-		func(r *colly.Response, err error) {
+		func(_ *colly.Response, err error) {
 			a.loginState.err = err
 		},
 	)
 
-	a.loginC.OnResponseHeaders(
-		func(r *colly.Response) {
-			//log.Println(r.Request.URL.String())
-		},
-	)
+	//a.loginC.OnResponseHeaders(
+	//	func(r *colly.Response) {
+	//		if r.Request.URL.String() == loginURL && r.Request.Method == http.MethodPost
+	//	},
+	//)
 	a.loginC.OnError(
 		func(r *colly.Response, err error) {
 			a.loginState.err = err
@@ -47,15 +46,16 @@ func (a AllAero) Login(ctx context.Context, username string, password string) er
 
 	u, _ := url.Parse(loginURL)
 	q := u.Query()
-	q.Set("handler", "json-signin")
+	q.Set("handler", "json")
 	u.RawQuery = q.Encode()
 
-	data := map[string]string{
-		"SignInAttempt.EmailAddress": username,
-		"SignInAttempt.Password":     password,
-		"__RequestVerificationToken": a.loginState.token,
-	}
-	if err := a.loginC.Post(u.String(), data); err != nil {
+	if err := a.loginC.Post(
+		u.String(), map[string]string{
+			"SignInAttempt.EmailAddress": username,
+			"SignInAttempt.Password":     password,
+			"__RequestVerificationToken": a.loginState.token,
+		},
+	); err != nil {
 		return err
 	}
 

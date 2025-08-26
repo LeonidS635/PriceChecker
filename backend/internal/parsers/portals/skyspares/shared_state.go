@@ -1,25 +1,25 @@
-package airpowerinc
+package skyspares
 
-import "github.com/LeonidS635/PriceChecker/backend/internal/dto"
+import (
+	"github.com/LeonidS635/PriceChecker/backend/internal/dto"
+)
 
 type searchSharedState struct {
 	offers []dto.Offer
 	err    error
 
-	exactMatch  bool
+	baseOffer   dto.Offer
 	requestedPN string
 }
 
 func newSearchSharedState() *searchSharedState {
-	return &searchSharedState{
-		exactMatch: true,
-	}
+	return &searchSharedState{}
 }
 
 func (s *searchSharedState) reset() {
 	s.offers = []dto.Offer{}
 	s.err = nil
 
-	s.exactMatch = true
+	s.baseOffer = dto.Offer{}
 	s.requestedPN = ""
 }

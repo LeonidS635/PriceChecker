@@ -11,7 +11,13 @@ import (
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/airpowerinc"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/ajweventory"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/allaero"
+	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/boeingshop"
+	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/dasi"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/excel"
+	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/lasaero"
+	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/satair"
+	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/scross"
+	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/skyspares"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/workflow/spawners/models"
 )
 
@@ -24,11 +30,17 @@ var Spawners map[domain.PortalID]Spawner
 
 func init() {
 	Spawners = map[domain.PortalID]Spawner{
-		portals.PortalAerobay:        models.NewCollySpawner(aerobay.NewAerobayParser),
+		portals.PortalAerobay:        models.NewCollySpawner(aerobay.NewAeroBay),
 		portals.PortalAircraftSpruce: models.NewCollySpawner(aircraftspruce.NewAircraftSpruce),
 		portals.PortalAirPowerInc:    models.NewCollySpawner(airpowerinc.NewAirPowerInc),
 		portals.PortalAJWEventory:    models.NewCollySpawner(ajweventory.NewAJWEventory),
 		portals.PortalAllAero:        models.NewCollySpawner(allaero.NewAllAero),
+		portals.PortalBoeingShop:     models.NewCollySpawner(boeingshop.NewBoeingShop),
+		portals.PortalDasi:           models.NewCollySpawner(dasi.NewDasi),
+		portals.PortalLASAero:        models.NewCollySpawner(lasaero.NewLASAero),
+		portals.PortalSatAir:         models.NewCollySpawner(satair.NewSatAir),
+		portals.PortalSCross:         models.NewCollySpawner(scross.NewSCross),
+		portals.PortalSkySpares:      models.NewCollySpawner(skyspares.NewSkySpares),
 	}
 }
 

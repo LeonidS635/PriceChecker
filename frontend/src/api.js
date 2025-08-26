@@ -199,7 +199,7 @@ class StreamingResponseHandler {
                                 // Check if this is an error from server
                                 if (result.success === false) {
                                     this.onError?.(result.error, result.portal_id, result.requested_part_number);
-                                } else if (result.success === true) {
+                                } else {
                                     if (result.offers && result.offers.length > 0) {
                                         // Process offers
                                         result.offers.forEach(offer => {

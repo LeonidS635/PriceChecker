@@ -9,6 +9,7 @@ import (
 
 	"github.com/LeonidS635/PriceChecker/backend/internal/dto"
 	"github.com/LeonidS635/PriceChecker/backend/internal/dto/conditions"
+	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/utils"
 	"github.com/gocolly/colly/v2"
 )
 
@@ -32,12 +33,7 @@ func (a AllAero) configureSearch() {
 					offer.QTY, _ = strconv.Atoi(fields[0])
 				}
 			}
-
-			price, _ := strconv.ParseFloat(
-				strings.TrimSpace(e.ChildText("td[data-title=\"Price\"] > div[id=\"Price_0\"] > span[class=\"value\"]")),
-				32,
-			)
-			offer.Price = float32(price)
+			offer.Price, _ = utils.GetPriceFromString(e.ChildText("td[data-title=\"Price\"] > div[id=\"Price_0\"] > span[class=\"value\"]"))
 
 			e.ForEach(
 				"div[class$=\"alternate-part\"]", func(_ int, alt *colly.HTMLElement) {

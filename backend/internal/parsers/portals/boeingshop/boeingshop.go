@@ -1,21 +1,21 @@
-package airpowerinc
+package boeingshop
 
 import (
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers"
 	"github.com/gocolly/colly/v2"
 )
 
-type AirPowerInc struct {
+type BoeingShop struct {
 	searchC     *colly.Collector
 	searchState *searchSharedState
 }
 
-func NewAirPowerInc(baseC *colly.Collector) parsers.Parser {
-	a := AirPowerInc{
+func NewBoeingShop(baseC *colly.Collector) parsers.Parser {
+	b := BoeingShop{
 		searchC:     baseC,
 		searchState: newSearchSharedState(),
 	}
-	a.configureSearch()
+	b.configureSearch()
 
-	return a
+	return b
 }
