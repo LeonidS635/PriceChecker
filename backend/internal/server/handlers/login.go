@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"github.com/LeonidS635/PriceChecker/backend/internal/domain"
+	"github.com/LeonidS635/PriceChecker/backend/internal/dto"
 )
 
 type (
 	loginRequest = []struct {
 		PortalID domain.PortalID `json:"portal_id"`
-		Username string          `json:"username"`
-		Password string          `json:"password"`
+		dto.Credentials
 	}
 	loginResponse = []portalStatus
 )
@@ -36,11 +36,11 @@ func (h Handler) Login(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	portalIDs := make([]domain.PortalID, 0, len(req))
-	for _, p := range req {
-		portalIDs = append(portalIDs, p.PortalID)
+	creds := make(map[domain.PortalID]dto.Credentials, len(req))
+	for _, c := range req {
+		creds[c.PortalID] = c.Credentials
 	}
-	loginResults := h.resProcessor.ProcessLogin(ctx, portalIDs)
+	loginResults := h.resProcessor.ProcessLogin(ctx, creds)
 
 	var resp loginResponse
 	for portalID, err := range loginResults {

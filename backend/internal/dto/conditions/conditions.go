@@ -9,7 +9,7 @@ const (
 	NS
 	NE
 	OH
-	AS
+	AR
 	SV
 )
 
@@ -24,7 +24,7 @@ var Conditions = []Condition{
 	{ID: NS, Code: "NS", Name: "New Surplus"},
 	{ID: NE, Code: "NE", Name: "New"},
 	{ID: OH, Code: "OH", Name: "Overhaul"},
-	{ID: AS, Code: "AS", Name: "As Removed"},
+	{ID: AR, Code: "AR", Name: "As Removed"},
 	{ID: SV, Code: "SV", Name: "Serviceable"},
 }
 
@@ -36,8 +36,8 @@ func GetID(cnd string) ID {
 		return NE
 	case "overhaul", "overhauled", "oh":
 		return OH
-	case "as removed", "as":
-		return AS
+	case "as removed", "as", "ar":
+		return AR
 	case "serviceable", "sv":
 		return SV
 	default:

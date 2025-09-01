@@ -5,12 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
-
-	"github.com/LeonidS635/PriceChecker/backend/internal/domain"
-	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/workflow/spawners"
 )
 
 const excelDirPath = "./uploads"
@@ -34,12 +30,13 @@ func saveExcelFileOnDisk(name string, content io.Reader) error {
 }
 
 func (m Manager) AddExcelFile(ctx context.Context, name string, content io.Reader) error {
-	log.Println("saving", name)
-	if err := saveExcelFileOnDisk(name, content); err != nil {
-		return err
-	}
-
-	fileID := spawners.RegisterExcelSpawner(filepath.Join(excelDirPath, name))
-
-	return m.Login(ctx, []domain.PortalID{fileID})[fileID]
+	//log.Println("saving", name)
+	//if err := saveExcelFileOnDisk(name, content); err != nil {
+	//	return err
+	//}
+	//
+	//fileID := spawners.RegisterExcelSpawner(filepath.Join(excelDirPath, name))
+	//
+	//return m.Login(ctx, []domain.PortalID{fileID})[fileID]
+	return nil
 }

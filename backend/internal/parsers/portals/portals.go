@@ -38,7 +38,7 @@ var AllPortals = []Portal{
 	{ID: PortalDasi, Name: "Dasi"},
 	{ID: PortalGlobalAviation, Name: "GlobalAviation"},
 	{ID: PortalLASAero, Name: "LASAero"},
-	//{ID: PortalProponent, Name: "Proponent"},
+	{ID: PortalProponent, Name: "Proponent"},
 	{ID: PortalSatAir, Name: "SatAir"},
 	{ID: PortalSCross, Name: "SCross"},
 	{ID: PortalSkySpares, Name: "SkySpares"},

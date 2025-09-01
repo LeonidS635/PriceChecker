@@ -19,9 +19,9 @@ func NewResultsProcessor(ctx context.Context) ResultsProcessor {
 }
 
 func (rp ResultsProcessor) ProcessLogin(
-	ctx context.Context, portalIDs []domain.PortalID,
+	ctx context.Context, creds map[domain.PortalID]dto.Credentials,
 ) map[domain.PortalID]results.LoginResult {
-	return rp.m.Login(ctx, portalIDs)
+	return rp.m.Login(ctx, creds)
 }
 
 func (rp ResultsProcessor) ProcessSearch(

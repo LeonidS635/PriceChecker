@@ -17,6 +17,7 @@ import (
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/excel"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/globalaviation"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/lasaero"
+	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/proponent"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/satair"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/scross"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/skyspares"
@@ -52,11 +53,11 @@ func init() {
 		portals.PortalDasi:           models.NewCollySpawner(dasi.NewDasi, defaultRateLimit),
 		portals.PortalGlobalAviation: models.NewCollySpawner(globalaviation.NewGlobalAviation, 1),
 		portals.PortalLASAero:        models.NewCollySpawner(lasaero.NewLASAero, defaultRateLimit),
-		//portals.PortalProponent:      models.NewCollySpawner(proponent.NewProponent),
-		portals.PortalSatAir:    models.NewCollySpawner(satair.NewSatAir, defaultRateLimit),
-		portals.PortalSCross:    models.NewCollySpawner(scross.NewSCross, defaultRateLimit),
-		portals.PortalSkySpares: models.NewCollySpawner(skyspares.NewSkySpares, defaultRateLimit),
-		portals.PortalWencor:    models.NewCollySpawner(wencor.NewWencor, defaultRateLimit),
+		portals.PortalProponent:      models.NewCollySpawner(proponent.NewProponent, 1),
+		portals.PortalSatAir:         models.NewCollySpawner(satair.NewSatAir, defaultRateLimit),
+		portals.PortalSCross:         models.NewCollySpawner(scross.NewSCross, defaultRateLimit),
+		portals.PortalSkySpares:      models.NewCollySpawner(skyspares.NewSkySpares, defaultRateLimit),
+		portals.PortalWencor:         models.NewCollySpawner(wencor.NewWencor, defaultRateLimit),
 	}
 }
 

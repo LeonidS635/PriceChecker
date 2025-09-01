@@ -33,7 +33,7 @@ func NewCollySpawner(portalConstructor func(c *colly.Collector) parsers.Parser, 
 }
 
 func (cp *CollySpawner) Base() parsers.Authenticator {
-	cp.count++
+	cp.count = 0 // Temp fix
 
 	cp.c = colly.NewCollector()
 	return cp.portalConstructor(cp.c)
