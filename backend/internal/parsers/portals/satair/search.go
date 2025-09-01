@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -15,6 +14,8 @@ import (
 	"github.com/LeonidS635/PriceChecker/backend/internal/dto/conditions"
 	"github.com/gocolly/colly/v2"
 )
+
+const batchSize = 5
 
 func (s SatAir) configureSearch() {
 	s.offerSearchC.AllowURLRevisit = true
@@ -38,10 +39,6 @@ func (s SatAir) configureSearch() {
 				s.searchState.err = err
 				return
 			}
-
-			if len(s.searchState.addInfoResponse.ProductDetails) != len(s.searchState.offerResponse.Products) {
-				s.searchState.err = errors.New("invalid product count")
-			}
 		},
 	)
 	s.addInfoC.OnError(
@@ -53,52 +50,43 @@ func (s SatAir) configureSearch() {
 	s.plantsC.AllowURLRevisit = true
 	s.plantsC.OnResponse(
 		func(r *colly.Response) {
-			type response struct {
-				Entries []struct {
-					Plants []struct {
-						InStock   bool `json:"inStock"`
-						QTY       int  `json:"quantity"`
-						Warehouse struct {
-							Name string `json:"name"`
-						} `json:"warehouse"`
-					} `json:"details"`
-				} `json:"entries"`
-			}
-			resp := response{}
-
-			if err := json.Unmarshal(r.Body, &resp); err != nil {
+			batch, err := strconv.Atoi(r.Ctx.Get("batch"))
+			if err != nil {
 				s.searchState.err = err
 				return
 			}
 
-			if len(resp.Entries) != len(s.searchState.offerResponse.Products) {
-				s.searchState.err = errors.New("invalid product count")
+			if err := json.Unmarshal(r.Body, &s.searchState.plantsResponse); err != nil {
+				s.searchState.err = err
 				return
 			}
 
-			for i := 0; i < len(s.searchState.offerResponse.Products); i++ {
+			for i, j := 0, batch*batchSize; i < len(s.searchState.addInfoResponse.ProductDetails) && j < len(s.searchState.offerResponse.Products); i, j = i+1, j+1 {
 				var offer dto.Offer
-				offer.PartNumber = s.searchState.offerResponse.Products[i].Name
-				offer.Description = s.searchState.offerResponse.Products[i].Description
-				offer.Condition = conditions.GetID(s.searchState.offerResponse.Products[i].Condition)
+				offer.PartNumber = s.searchState.offerResponse.Products[j].Name
+				offer.Description = s.searchState.offerResponse.Products[j].Description
+				offer.Condition = conditions.GetID(s.searchState.offerResponse.Products[j].Condition)
 				offer.QTY = s.searchState.addInfoResponse.ProductDetails[i].Details.QTY
 				offer.Price = s.searchState.addInfoResponse.ProductDetails[i].Details.Price.Value
 				offer.Warehouse = s.searchState.addInfoResponse.ProductDetails[i].Details.Warehouse.Name
+				if offer.Warehouse == "" {
+					offer.Warehouse = s.searchState.addInfoResponse.ProductDetails[i].Details.Shop.Location
+				}
 				if !s.searchState.addInfoResponse.ProductDetails[i].Details.InStock {
 					if len(s.searchState.addInfoResponse.ProductDetails[i].Details.Availabilities) > 0 {
 						offer.LeadTime = s.searchState.addInfoResponse.ProductDetails[i].Details.Availabilities[0].Date
 					}
 				}
-				for _, alt := range s.searchState.offerResponse.Products[i].Interchangeable {
+				for _, alt := range s.searchState.offerResponse.Products[j].Interchangeable {
 					offer.Interchangeable = append(
 						offer.Interchangeable, fmt.Sprintf("%s:%s", alt.PartNumber, alt.CageCode),
 					)
 				}
 
-				if len(resp.Entries[i].Plants) == 0 {
+				if len(s.searchState.plantsResponse.Entries[i].Plants) == 0 {
 					s.searchState.offers = append(s.searchState.offers, offer)
 				} else {
-					for _, plant := range resp.Entries[i].Plants {
+					for _, plant := range s.searchState.plantsResponse.Entries[i].Plants {
 						newOffer := offer
 						newOffer.QTY = plant.QTY
 						newOffer.Warehouse = plant.Warehouse.Name
@@ -145,16 +133,18 @@ func (s SatAir) Search(ctx context.Context, partNumber string) ([]dto.Offer, err
 				ProductEntries []productEntry `json:"productEntries"`
 			}
 		)
-		p := params{ProductEntries: make([]productEntry, len(s.searchState.offerResponse.Products))}
+		p := params{ProductEntries: make([]productEntry, 0, len(s.searchState.offerResponse.Products))}
 		for i := 0; i < len(s.searchState.offerResponse.Products); i++ {
-			if strings.ToUpper(s.searchState.offerResponse.Products[i].PartNumber) != strings.ToUpper(partNumber) {
+			if !strings.EqualFold(s.searchState.offerResponse.Products[i].PartNumber, partNumber) {
 				break
 			}
-			p.ProductEntries[i] = productEntry{
-				ID:            s.searchState.offerResponse.Products[i].ID,
-				QTY:           1,
-				WarehouseCode: "",
-			}
+			p.ProductEntries = append(
+				p.ProductEntries, productEntry{
+					ID:            s.searchState.offerResponse.Products[i].ID,
+					QTY:           1,
+					WarehouseCode: "",
+				},
+			)
 		}
 
 		if len(p.ProductEntries) == 0 {
@@ -168,16 +158,25 @@ func (s SatAir) Search(ctx context.Context, partNumber string) ([]dto.Offer, err
 			"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
 		)
 
-		marshalledP, _ := json.Marshal(p)
-		if err := s.addInfoC.Request(
-			http.MethodPost, addInfoURL, bytes.NewReader(marshalledP), nil, headers,
-		); err != nil {
-			return nil, err
-		}
-		if err := s.plantsC.Request(
-			http.MethodPost, plantsURL, bytes.NewReader(marshalledP), nil, headers,
-		); err != nil {
-			return nil, err
+		batchCtx := colly.NewContext()
+		for batch := 0; batch < (len(p.ProductEntries)+batchSize-1)/batchSize; batch++ {
+			paramsToMarshall := params{
+				ProductEntries: p.ProductEntries[batch*batchSize : min((batch+1)*batchSize, len(p.ProductEntries))],
+			}
+			marshalledP, _ := json.Marshal(paramsToMarshall)
+
+			batchCtx.Put("batch", strconv.Itoa(batch))
+
+			if err := s.addInfoC.Request(
+				http.MethodPost, addInfoURL, bytes.NewReader(marshalledP), batchCtx, headers,
+			); err != nil {
+				return nil, err
+			}
+			if err := s.plantsC.Request(
+				http.MethodPost, plantsURL, bytes.NewReader(marshalledP), batchCtx, headers,
+			); err != nil {
+				return nil, err
+			}
 		}
 	}
 

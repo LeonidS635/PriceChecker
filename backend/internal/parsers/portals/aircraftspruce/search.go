@@ -2,57 +2,64 @@ package aircraftspruce
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
 
 	"github.com/LeonidS635/PriceChecker/backend/internal/dto"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/utils"
-	"github.com/gocolly/colly/v2"
+	"github.com/go-rod/rod"
 )
 
-func (a *AircraftSpruce) configureSearch() {
-	a.searchC.AllowURLRevisit = true
-
-	a.searchC.OnHTML(
-		"div[class=\"prDetailRight\"]", func(e *colly.HTMLElement) {
-			var offer dto.Offer
-
-			if partNumEl := e.DOM.Find("div[class=\"prModel\""); partNumEl.Length() > 0 {
-				text := strings.TrimSpace(partNumEl.Text())
-				if lines := strings.Split(text, "\n"); len(lines) >= 2 {
-					fields := strings.Fields(lines[1])
-					if len(fields) > 0 {
-						offer.PartNumber = fields[len(fields)-1]
-					}
-				}
-			}
-			if descEl := e.DOM.Find("h2").First(); descEl.Length() > 0 {
-				offer.Description = strings.TrimSpace(descEl.Text())
-			}
-			if priceEl := e.DOM.Find("div[class=\"prPrice\"] div[id=\"np\"]"); priceEl.Length() > 0 {
-				priceText := strings.TrimSpace(priceEl.Text())
-				if parts := strings.Split(priceText, "/"); len(parts) > 0 {
-					offer.Price, _ = utils.GetPriceFromString(parts[0])
-				}
-			}
-
-			a.searchState.offers = append(a.searchState.offers, offer)
-		},
-	)
-	a.searchC.OnError(
-		func(r *colly.Response, err error) {
-			a.searchState.err = err
-		},
-	)
-}
-
-func (a *AircraftSpruce) Search(ctx context.Context, partNumber string) ([]dto.Offer, error) {
-	defer a.searchState.reset()
-
-	u := fmt.Sprintf(searchURL, url.PathEscape(partNumber))
-	if err := a.searchC.Visit(u); err != nil {
+func (a AircraftSpruce) Search(ctx context.Context, partNumber string) ([]dto.Offer, error) {
+	if err := a.page.Navigate(fmt.Sprintf(searchURL, url.PathEscape(partNumber))); err != nil {
 		return nil, err
 	}
-	return a.searchState.offers, a.searchState.err
+
+	var offer dto.Offer
+
+	partNumberEl, err := a.page.MustWaitDOMStable().Sleeper(rod.NotFoundSleeper).Element("div[class=\"prModel\"")
+	if err != nil {
+		if errors.Is(err, &rod.ElementNotFoundError{}) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	partNumberText, err := partNumberEl.Text()
+	if err != nil {
+		return nil, err
+	}
+	if lines := strings.Split(partNumberText, "\n"); len(lines) > 0 {
+		if fields := strings.Fields(lines[len(lines)-1]); len(fields) > 0 {
+			offer.PartNumber = fields[len(fields)-1]
+		}
+	}
+
+	if strings.EqualFold(offer.PartNumber, partNumber) {
+		descEl, err := a.page.Element("h2")
+		if err != nil {
+			return nil, err
+		}
+		descText, err := descEl.Text()
+		if err != nil {
+			return nil, err
+		}
+		offer.Description = strings.TrimSpace(descText)
+
+		priceEl, err := a.page.Element("div[class=\"prPrice\"] div[id=\"np\"]")
+		if err != nil {
+			return nil, err
+		}
+		priceText, err := priceEl.Text()
+		if err != nil {
+			return nil, err
+		}
+		if parts := strings.Split(priceText, "/"); len(parts) > 0 {
+			offer.Price, _ = utils.GetPriceFromString(parts[0])
+		}
+
+		return []dto.Offer{offer}, nil
+	}
+	return nil, nil
 }

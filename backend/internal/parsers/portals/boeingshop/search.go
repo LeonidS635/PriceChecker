@@ -3,7 +3,6 @@ package boeingshop
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/url"
 	"strconv"
 	"strings"
@@ -44,7 +43,7 @@ func (b BoeingShop) configureSearch() {
 			}
 
 			for _, product := range resp.Products {
-				if strings.ToUpper(product.OemPartNumber) != strings.ToUpper(b.searchState.requestedPN) {
+				if !strings.EqualFold(product.OemPartNumber, b.searchState.requestedPN) {
 					b.searchState.exactMatch = false
 					return
 				}
@@ -52,7 +51,7 @@ func (b BoeingShop) configureSearch() {
 				var offer dto.Offer
 
 				offer.PartNumber = product.OemPartNumber
-				offer.Description = product.Name
+				offer.Description = strings.TrimSpace(strings.ReplaceAll(product.Name, product.OemPartNumber, ""))
 				if product.InStock {
 					offer.OtherInformation = "In stock"
 				} else {
@@ -65,7 +64,6 @@ func (b BoeingShop) configureSearch() {
 	)
 	b.searchC.OnError(
 		func(r *colly.Response, err error) {
-			log.Println(r.StatusCode, err)
 			b.searchState.err = err
 		},
 	)

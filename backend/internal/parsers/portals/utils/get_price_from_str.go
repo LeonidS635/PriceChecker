@@ -7,7 +7,7 @@ import (
 
 func GetPriceFromString(str string) (float32, error) {
 	price, err := strconv.ParseFloat(
-		strings.Replace(strings.TrimPrefix(strings.TrimSpace(str), "$"), ",", "", -1), 32,
+		strings.TrimSpace(strings.ReplaceAll(strings.ReplaceAll(str, "$", ""), ",", "")), 32,
 	)
 	if err != nil {
 		return 0, err

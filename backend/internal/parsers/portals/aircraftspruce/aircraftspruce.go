@@ -1,21 +1,16 @@
 package aircraftspruce
 
 import (
+	"time"
+
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers"
-	"github.com/gocolly/colly/v2"
+	"github.com/go-rod/rod"
 )
 
 type AircraftSpruce struct {
-	searchC     *colly.Collector
-	searchState *searchSharedState
+	page *rod.Page
 }
 
-func NewAircraftSpruce(baseC *colly.Collector) parsers.Parser {
-	a := &AircraftSpruce{
-		searchC:     baseC,
-		searchState: newSearchSharedState(),
-	}
-	a.configureSearch()
-
-	return a
+func NewAircraftSpruce(page *rod.Page) parsers.Parser {
+	return AircraftSpruce{page: page.Timeout(20 * time.Second)}
 }

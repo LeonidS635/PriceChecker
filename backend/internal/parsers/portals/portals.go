@@ -6,16 +6,20 @@ import (
 
 const (
 	PortalAerobay domain.PortalID = iota
+	PortalAeroSpareParts
 	PortalAircraftSpruce
 	PortalAirPowerInc
 	PortalAJWEventory
 	PortalAllAero
 	PortalBoeingShop
 	PortalDasi
+	PortalGlobalAviation
 	PortalLASAero
+	PortalProponent
 	PortalSatAir
 	PortalSCross
 	PortalSkySpares
+	PortalWencor
 )
 
 type Portal struct {
@@ -25,16 +29,20 @@ type Portal struct {
 
 var AllPortals = []Portal{
 	{ID: PortalAerobay, Name: "Aerobay"},
+	{ID: PortalAeroSpareParts, Name: "AeroSpareParts"},
 	{ID: PortalAircraftSpruce, Name: "AircraftSpruce"},
 	{ID: PortalAirPowerInc, Name: "AirPowerInc"},
 	{ID: PortalAJWEventory, Name: "AJWEventory"},
 	{ID: PortalAllAero, Name: "AllAero"},
 	{ID: PortalBoeingShop, Name: "BoeingShop"},
 	{ID: PortalDasi, Name: "Dasi"},
+	{ID: PortalGlobalAviation, Name: "GlobalAviation"},
 	{ID: PortalLASAero, Name: "LASAero"},
+	{ID: PortalProponent, Name: "Proponent"},
 	{ID: PortalSatAir, Name: "SatAir"},
 	{ID: PortalSCross, Name: "SCross"},
 	{ID: PortalSkySpares, Name: "SkySpares"},
+	{ID: PortalWencor, Name: "Wencor"},
 }
 
 var (

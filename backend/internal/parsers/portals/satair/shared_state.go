@@ -47,11 +47,25 @@ type searchSharedState struct {
 				Availabilities []struct {
 					Date string `json:"availabilityDate"`
 				} `json:"productAvailabilities"`
+				Shop struct {
+					Location string `json:"locationDisplayName"`
+				} `json:"shop"`
 				Warehouse struct {
 					Name string `json:"name"`
 				} `json:"warehouse"`
 			} `json:"productAdditionalInfo"`
 		} `json:"productEntries"`
+	}
+	plantsResponse struct {
+		Entries []struct {
+			Plants []struct {
+				InStock   bool `json:"inStock"`
+				QTY       int  `json:"quantity"`
+				Warehouse struct {
+					Name string `json:"name"`
+				} `json:"warehouse"`
+			} `json:"details"`
+		} `json:"entries"`
 	}
 }
 
@@ -65,4 +79,5 @@ func (s *searchSharedState) reset() {
 
 	s.offerResponse.Products = nil
 	s.addInfoResponse.ProductDetails = nil
+	s.plantsResponse.Entries = nil
 }

@@ -3,12 +3,12 @@ module github.com/LeonidS635/PriceChecker/backend
 go 1.24.0
 
 require (
-	github.com/gocolly/colly v1.2.0
+	github.com/PuerkitoBio/goquery v1.10.3
+	github.com/go-rod/rod v0.116.2
 	github.com/gocolly/colly/v2 v2.2.0
 )
 
 require (
-	github.com/PuerkitoBio/goquery v1.10.3 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/antchfx/htmlquery v1.3.4 // indirect
 	github.com/antchfx/xmlquery v1.4.4 // indirect
@@ -21,6 +21,11 @@ require (
 	github.com/nlnwa/whatwg-url v0.6.1 // indirect
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
 	github.com/temoto/robotstxt v1.1.2 // indirect
+	github.com/ysmood/fetchup v0.2.3 // indirect
+	github.com/ysmood/goob v0.4.0 // indirect
+	github.com/ysmood/got v0.40.0 // indirect
+	github.com/ysmood/gson v0.7.3 // indirect
+	github.com/ysmood/leakless v0.9.0 // indirect
 	golang.org/x/net v0.42.0 // indirect
 	golang.org/x/text v0.27.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
