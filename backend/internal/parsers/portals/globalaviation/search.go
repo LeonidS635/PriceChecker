@@ -3,7 +3,6 @@ package globalaviation
 import (
 	"context"
 	"errors"
-	"log"
 	"strconv"
 	"strings"
 
@@ -37,7 +36,6 @@ func (g GlobalAviation) configureSearch() {
 	g.updateJavaxSearchC.OnXML(
 		"//update[@id=\"j_id1:javax.faces.ViewState:0\"]", func(update *colly.XMLElement) {
 			g.searchState.token = update.Text
-			log.Println(g.searchState.token)
 		},
 	)
 	g.updateJavaxSearchC.OnError(
@@ -55,7 +53,6 @@ func (g GlobalAviation) configureSearch() {
 	)
 	g.searchC.OnXML(
 		"//update[@id=\"gaform:rstable\"]", func(body *colly.XMLElement) {
-			//log.Println(body.Text)
 			bodyHTML, err := goquery.NewDocumentFromReader(strings.NewReader(body.Text))
 			if err != nil {
 				g.searchState.err = err
@@ -161,6 +158,5 @@ func (g GlobalAviation) Search(ctx context.Context, partNumber string) ([]dto.Of
 	); err != nil {
 		return nil, err
 	}
-	log.Println(partNumber, g.searchState.offers)
 	return g.searchState.offers, g.searchState.err
 }

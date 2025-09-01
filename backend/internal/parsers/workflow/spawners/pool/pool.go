@@ -9,13 +9,12 @@ import (
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/workflow/types"
 )
 
-const rateLimit = 4
-
 type ParserPool struct {
 	parsers chan parsers.Searcher
 }
 
 func NewParserPool(spawner spawners.Spawner) (ParserPool, error) {
+	rateLimit := spawner.GetRateLimit()
 	pp := ParserPool{
 		parsers: make(chan parsers.Searcher, rateLimit),
 	}

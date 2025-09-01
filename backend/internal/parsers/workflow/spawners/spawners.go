@@ -26,33 +26,37 @@ import (
 	"github.com/go-rod/rod/lib/launcher"
 )
 
+const defaultRateLimit = 4
+
 type Spawner interface {
 	Base() parsers.Authenticator
 	Spawn() (parsers.Searcher, error)
+	GetRateLimit() int
 }
 
 var Spawners map[domain.PortalID]Spawner
 
 func init() {
-	u := launcher.New().Headless(false).MustLaunch()
+	path, _ := launcher.LookPath()
+	u := launcher.New().Bin(path).MustLaunch()
 	browser := rod.New().ControlURL(u).MustConnect().NoDefaultDevice()
 
 	Spawners = map[domain.PortalID]Spawner{
-		portals.PortalAerobay:        models.NewCollySpawner(aerobay.NewAeroBay),
-		portals.PortalAeroSpareParts: models.NewCollySpawner(aerospareparts.NewAeroSpareParts),
-		portals.PortalAircraftSpruce: models.NewRodSpawner(browser, aircraftspruce.NewAircraftSpruce),
-		portals.PortalAirPowerInc:    models.NewCollySpawner(airpowerinc.NewAirPowerInc),
-		portals.PortalAJWEventory:    models.NewCollySpawner(ajweventory.NewAJWEventory),
-		portals.PortalAllAero:        models.NewCollySpawner(allaero.NewAllAero),
-		portals.PortalBoeingShop:     models.NewCollySpawner(boeingshop.NewBoeingShop),
-		portals.PortalDasi:           models.NewCollySpawner(dasi.NewDasi),
-		portals.PortalGlobalAviation: models.NewCollySpawner(globalaviation.NewGlobalAviation),
-		portals.PortalLASAero:        models.NewCollySpawner(lasaero.NewLASAero),
+		portals.PortalAerobay:        models.NewCollySpawner(aerobay.NewAeroBay, defaultRateLimit),
+		portals.PortalAeroSpareParts: models.NewCollySpawner(aerospareparts.NewAeroSpareParts, defaultRateLimit),
+		portals.PortalAircraftSpruce: models.NewRodSpawner(browser, aircraftspruce.NewAircraftSpruce, defaultRateLimit),
+		portals.PortalAirPowerInc:    models.NewCollySpawner(airpowerinc.NewAirPowerInc, defaultRateLimit),
+		portals.PortalAJWEventory:    models.NewCollySpawner(ajweventory.NewAJWEventory, defaultRateLimit),
+		portals.PortalAllAero:        models.NewCollySpawner(allaero.NewAllAero, defaultRateLimit),
+		portals.PortalBoeingShop:     models.NewCollySpawner(boeingshop.NewBoeingShop, defaultRateLimit),
+		portals.PortalDasi:           models.NewCollySpawner(dasi.NewDasi, defaultRateLimit),
+		portals.PortalGlobalAviation: models.NewCollySpawner(globalaviation.NewGlobalAviation, 1),
+		portals.PortalLASAero:        models.NewCollySpawner(lasaero.NewLASAero, defaultRateLimit),
 		//portals.PortalProponent:      models.NewCollySpawner(proponent.NewProponent),
-		portals.PortalSatAir:    models.NewCollySpawner(satair.NewSatAir),
-		portals.PortalSCross:    models.NewCollySpawner(scross.NewSCross),
-		portals.PortalSkySpares: models.NewCollySpawner(skyspares.NewSkySpares),
-		portals.PortalWencor:    models.NewCollySpawner(wencor.NewWencor),
+		portals.PortalSatAir:    models.NewCollySpawner(satair.NewSatAir, defaultRateLimit),
+		portals.PortalSCross:    models.NewCollySpawner(scross.NewSCross, defaultRateLimit),
+		portals.PortalSkySpares: models.NewCollySpawner(skyspares.NewSkySpares, defaultRateLimit),
+		portals.PortalWencor:    models.NewCollySpawner(wencor.NewWencor, defaultRateLimit),
 	}
 }
 

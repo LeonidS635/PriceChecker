@@ -23,3 +23,7 @@ func (e *ExcelSpawner) Base() parsers.Authenticator {
 func (e *ExcelSpawner) Spawn() (parsers.Searcher, error) {
 	return e.portalConstructor(e.path), nil
 }
+
+func (e *ExcelSpawner) GetRateLimit() int {
+	return -1 // Will be replaced later
+}

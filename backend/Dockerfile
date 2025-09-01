@@ -11,6 +11,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o server .
 
 FROM alpine:latest
 
+RUN apk update && apk add --no-cache chromium
+
 WORKDIR /app
 COPY --from=builder /app/server .
 
