@@ -258,36 +258,44 @@ class AppController {
         console.log('Search completed');
     }
 
-    // Export data
-    async exportData(selectedData) {
+    // Form quotation
+    async formQuotation() {
+        const quotationData = window.uiManager.getQuotationData();
+
+        if (!quotationData) {
+            return; // Error already shown in UI
+        }
+
         try {
-            const response = await apiClient.exportData(selectedData);
+            const response = await apiClient.formQuotation(quotationData);
 
             // Handle file download
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'export.xlsx';
+            a.download = `quotation_${quotationData.quotation_number}.xlsx`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
 
             window.uiManager.addNotification(
-                CONFIG.MESSAGES.EXPORT_SUCCESS,
+                CONFIG.MESSAGES.QUOTATION_SUCCESS,
                 null,
                 null,
                 'info'
             );
 
-            console.log('Export completed successfully');
+            window.uiManager.closeModal('quotationModal');
+
+            console.log('Quotation formed successfully');
 
         } catch (error) {
-            console.error('Export error:', error);
+            console.error('Quotation error:', error);
 
             window.uiManager.addNotification(
-                `${CONFIG.MESSAGES.EXPORT_ERROR}: ${error.message}`,
+                `${CONFIG.MESSAGES.QUOTATION_ERROR}: ${error.message}`,
                 null,
                 null,
                 'error'
@@ -350,6 +358,7 @@ class AppController {
         this.excelFiles = this.excelFiles.filter(f => f.id !== fileId);
         this.portals = this.portals.filter(p => p.id !== fileId);
         this.loggedInPortals = this.loggedInPortals.filter(id => id !== fileId);
+
         // Update UI
         window.uiManager.removeExcelFile(fileId);
 

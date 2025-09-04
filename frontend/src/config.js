@@ -8,7 +8,7 @@ const CONFIG = {
         CONFIG: '/config',
         LOGIN: '/login',
         SEARCH: '/search',
-        EXPORT: '/export',
+        QUOTATION: '/quotation',
         EXCEL: '/excel'
     },
 
@@ -18,7 +18,7 @@ const CONFIG = {
         NOTIFICATION_TIMEOUT: 5000,
 
         // Maximum cell text length before truncation
-        MAX_CELL_LENGTH: 100,
+        MAX_CELL_LENGTH: 200,
 
         // Search debounce delay (ms)
         SEARCH_DEBOUNCE: 300,
@@ -45,8 +45,8 @@ const CONFIG = {
         SEARCH_COMPLETE: 'Search completed',
         SEARCH_CANCELLED: 'Search cancelled',
         SEARCH_ERROR: 'Search failed',
-        EXPORT_SUCCESS: 'Export successful',
-        EXPORT_ERROR: 'Export failed',
+        QUOTATION_SUCCESS: 'Quotation formed successfully',
+        QUOTATION_ERROR: 'Failed to form quotation',
         EXCEL_UPLOAD_SUCCESS: 'Excel file uploaded successfully',
         EXCEL_UPLOAD_ERROR: 'Failed to upload Excel file',
         EXCEL_DELETE_SUCCESS: 'Excel file deleted successfully',
@@ -54,22 +54,23 @@ const CONFIG = {
         NO_PORTALS_SELECTED: 'Please select at least one portal',
         NO_LOGGED_IN_PORTALS: 'Please login to at least one portal before searching',
         NO_PART_NUMBERS: 'Please enter part numbers to search',
-        NO_ROWS_SELECTED: 'Please select rows to export',
+        NO_ROWS_SELECTED: 'Please select items to form quotation',
+        NO_QUOTATION_NUMBER: 'Please enter a quotation number',
         SERVER_UNAVAILABLE: 'Server is unavailable',
         PART_NOT_FOUND: 'Part not found'
     },
 
     // Table columns configuration
     TABLE_COLUMNS: [
-        { key: 'portal', title: 'Portal', sortable: true },
-        { key: 'part_number', title: 'Part Number', sortable: true },
-        { key: 'description', title: 'Description', sortable: false },
-        { key: 'condition', title: 'Condition', sortable: true },
-        { key: 'price', title: 'Price', sortable: true },
-        { key: 'qty', title: 'QTY', sortable: true },
-        { key: 'lead_time', title: 'Lead Time', sortable: false },
-        { key: 'warehouse', title: 'Warehouse', sortable: false },
-        { key: 'interchangeable', title: 'Interchangeable', sortable: false },
-        { key: 'other_information', title: 'Other Information', sortable: false }
+        {key: 'portal', title: 'Portal', sortable: true},
+        {key: 'part_number', title: 'Part Number', sortable: true},
+        {key: 'description', title: 'Description', sortable: false},
+        {key: 'condition', title: 'Condition', sortable: true},
+        {key: 'price', title: 'Price', sortable: true},
+        {key: 'qty', title: 'QTY', sortable: true},
+        {key: 'lead_time', title: 'Lead Time', sortable: false},
+        {key: 'warehouse', title: 'Warehouse', sortable: false},
+        {key: 'interchangeable', title: 'Interchangeable', sortable: false},
+        {key: 'other_information', title: 'Other Information', sortable: false}
     ]
 };

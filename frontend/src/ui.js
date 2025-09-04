@@ -2,6 +2,8 @@
 class UIManager {
     constructor() {
         this.searchResults = [];
+        this.partGroups = new Map(); // Group results by part number
+        this.expandedGroups = new Set(); // Track expanded groups
         this.filteredResults = [];
         this.selectedRows = new Set();
         this.selectMode = false;
@@ -37,7 +39,7 @@ class UIManager {
 
         // Export controls
         document.getElementById('selectModeBtn').addEventListener('click', () => this.toggleSelectMode());
-        document.getElementById('exportBtn').addEventListener('click', () => this.exportSelected());
+        document.getElementById('quotationBtn').addEventListener('click', () => this.showQuotationModal());
 
         // Error panel
         document.getElementById('errorToggleBtn').addEventListener('click', () => this.toggleErrorPanel());
@@ -125,16 +127,16 @@ class UIManager {
         portalContainer.innerHTML = this.portals.map(portal => `
             <label class="checkbox-item">
                 <input type="checkbox" value="${portal.id}" ${this.currentFilters.portal_ids.includes(portal.id) ? 'checked' : ''}>
-                    <span>${portal.name}</span>
+                <span>${portal.name}</span>
             </label>
-    `).join('');
+        `).join('');
 
         conditionContainer.innerHTML = this.conditions.map(condition => `
-        <label class="checkbox-item">
-            <input type="checkbox" value="${condition.id}" ${this.currentFilters.conditions.includes(condition.id) ? 'checked' : ''}>
+            <label class="checkbox-item">
+                <input type="checkbox" value="${condition.id}" ${this.currentFilters.conditions.includes(condition.id) ? 'checked' : ''}>
                 <span>${condition.name}</span>
-        </label>
-    `).join('');
+            </label>
+        `).join('');
     }
 
     // Show filters modal
@@ -312,7 +314,7 @@ class UIManager {
         window.appController.cancelSearch();
     }
 
-// Get part numbers from input
+    // Get part numbers from input
     getPartNumbers() {
         const input = document.getElementById('partNumbersInput');
         const text = input.value.trim();
@@ -332,12 +334,12 @@ class UIManager {
         );
 
         if (partNumbers.length === 0) {
-            this.showFatalError(CONFIG.MESSAGES.NO_PART_NUMBERS);
+            this.addNotification(CONFIG.MESSAGES.NO_PART_NUMBERS, null, null, 'warning');
             return false;
         }
 
         if (selectedPortals.length === 0) {
-            this.showFatalError(CONFIG.MESSAGES.NO_LOGGED_IN_PORTALS);
+            this.addNotification(CONFIG.MESSAGES.NO_LOGGED_IN_PORTALS, null, null, 'warning');
             return false;
         }
 
@@ -378,20 +380,20 @@ class UIManager {
     // Results table management
     initResultsTable() {
         const container = document.getElementById('resultsTable');
-        const checkboxHeader = this.selectMode ? '<th><input type="checkbox" id="selectAllCheckbox"></th>' : '';
+        const checkboxHeader = this.selectMode ? '<th><input type="checkbox" class="select-all-checkbox" id="selectAllCheckbox"></th>' : '';
 
         container.innerHTML = `
-                <table class="results-table">
-                    <thead>
+            <table class="results-table">
+                <thead>
                     <tr>
                         ${checkboxHeader}
                         ${CONFIG.TABLE_COLUMNS.map(col => `<th>${col.title}</th>`).join('')}
                     </tr>
-                    </thead>
-                    <tbody id="resultsTableBody">
-                    </tbody>
-                </table>
-            `;
+                </thead>
+                <tbody id="resultsTableBody">
+                </tbody>
+            </table>
+        `;
 
         // Add select all functionality
         if (this.selectMode) {
@@ -401,55 +403,118 @@ class UIManager {
         }
 
         this.searchResults = [];
+        this.partGroups.clear();
+        this.expandedGroups.clear();
         this.filteredResults = [];
         this.selectedRows.clear();
+        this.updateSelectedCount();
     }
 
     // Add search result to table
     addSearchResult(result) {
         this.searchResults.push(result);
+
+        // Group by part number
+        const partNumber = result.requested_part_number;
+        if (!this.partGroups.has(partNumber)) {
+            this.partGroups.set(partNumber, []);
+        }
+        this.partGroups.get(partNumber).push(result);
+
         this.applyTableFilters();
     }
 
     // Apply filters to table results
     applyTableFilters() {
-        this.filteredResults = this.searchResults.filter(result => {
-            return this.currentFilters.portal_ids.includes(result.portal_id) &&
-                (result.condition_id === 0 || this.currentFilters.conditions.includes(result.condition_id));
-        });
+        // Filter each part group
+        const filteredGroups = new Map();
 
-        this.updateTableDisplay();
+        for (const [partNumber, results] of this.partGroups) {
+            const filteredResults = results.filter(result => {
+                return this.currentFilters.portal_ids.includes(result.portal_id) &&
+                    (result.condition_id === 0 || this.currentFilters.conditions.includes(result.condition_id));
+            });
+
+            if (filteredResults.length > 0) {
+                filteredGroups.set(partNumber, filteredResults);
+            }
+        }
+
+        this.filteredResults = [];
+        for (const results of filteredGroups.values()) {
+            this.filteredResults.push(...results);
+        }
+
+        this.updateTableDisplay(filteredGroups);
     }
 
-    // Update table display
-    updateTableDisplay() {
+    // Update table display with grouped results
+    updateTableDisplay(filteredGroups = null) {
         const tbody = document.getElementById('resultsTableBody');
         if (!tbody) return;
 
-        tbody.innerHTML = this.filteredResults.map((result, index) => {
-            const portal = this.portals.find(p => p.id === result.portal_id);
-            const condition = this.conditions.find(c => c.id === result.condition_id);
-            const isSelected = this.selectedRows.has(index);
+        if (!filteredGroups) {
+            // Rebuild filtered groups
+            filteredGroups = new Map();
+            for (const [partNumber, results] of this.partGroups) {
+                const filteredResults = results.filter(result => {
+                    return this.currentFilters.portal_ids.includes(result.portal_id) &&
+                        (result.condition_id === 0 || this.currentFilters.conditions.includes(result.condition_id));
+                });
 
-            const checkboxCell = this.selectMode ?
-                `<td><input type="checkbox" class="row-checkbox" data-index="${index}" ${isSelected ? 'checked' : ''}></td>` : '';
+                if (filteredResults.length > 0) {
+                    filteredGroups.set(partNumber, filteredResults);
+                }
+            }
+        }
 
-            return `
-                <tr class="${isSelected ? 'selected' : ''}">
-                    ${checkboxCell}
-                    <td>${portal ? portal.name : 'Unknown'}</td>
-                    <td>${result.part_number || ''}</td>
-                    <td>${this.formatCellContent(result.description || '')}</td>
-                    <td>${condition && condition.id !== 0 ? condition.code : ''}</td>
-                    <td>${result.price && result.price > 0 ? '$' + result.price : ''}</td>
-                    <td>${result.qty || ''}</td>
-                    <td>${result.lead_time || ''}</td>
-                    <td>${result.warehouse || ''}</td>
-                    <td>${this.formatArray(result.interchangeable)}</td>
-                    <td>${this.formatCellContent(result.other_information || '')}</td>
+        let rowIndex = 0;
+        const rows = [];
+
+        for (const [partNumber, results] of filteredGroups) {
+            const isExpanded = this.expandedGroups.has(partNumber);
+
+            // Add group header
+            rows.push(`
+                <tr class="part-group-header" onclick="window.uiManager.togglePartGroup('${partNumber}')">
+                    ${this.selectMode ? '<td></td>' : ''}
+                    <td colspan="${CONFIG.TABLE_COLUMNS.length}">
+                        <span class="expand-icon ${isExpanded ? 'expanded' : ''}">▶</span>
+                        ${partNumber} (${results.length} offers)
+                    </td>
                 </tr>
-            `;
-        }).join('');
+            `);
+
+            // Add group rows
+            results.forEach(result => {
+                const portal = this.portals.find(p => p.id === result.portal_id);
+                const condition = this.conditions.find(c => c.id === result.condition_id);
+                const isSelected = this.selectedRows.has(rowIndex);
+
+                const checkboxCell = this.selectMode ?
+                    `<td><input type="checkbox" class="row-checkbox" data-index="${rowIndex}" ${isSelected ? 'checked' : ''}></td>` : '';
+
+                rows.push(`
+                    <tr class="part-group-row ${isExpanded ? 'expanded' : ''} ${isSelected ? 'selected' : ''}">
+                        ${checkboxCell}
+                        <td>${portal ? portal.name : 'Unknown'}</td>
+                        <td>${result.part_number || ''}</td>
+                        <td>${this.formatCellContent(result.description || '')}</td>
+                        <td>${condition && condition.id !== 0 ? condition.code : ''}</td>
+                        <td>${result.price && result.price > 0 ? '$' + result.price : ''}</td>
+                        <td>${result.qty || ''}</td>
+                        <td>${result.lead_time || ''}</td>
+                        <td>${result.warehouse || ''}</td>
+                        <td>${this.formatArray(result.interchangeable)}</td>
+                        <td>${this.formatCellContent(result.other_information || '')}</td>
+                    </tr>
+                `);
+
+                rowIndex++;
+            });
+        }
+
+        tbody.innerHTML = rows.join('');
 
         // Add event listeners for row checkboxes
         if (this.selectMode) {
@@ -459,6 +524,18 @@ class UIManager {
                 });
             });
         }
+
+        this.updateSelectAllCheckbox();
+    }
+
+    // Toggle part group expansion
+    togglePartGroup(partNumber) {
+        if (this.expandedGroups.has(partNumber)) {
+            this.expandedGroups.delete(partNumber);
+        } else {
+            this.expandedGroups.add(partNumber);
+        }
+        this.updateTableDisplay();
     }
 
     // Format cell content for display
@@ -479,18 +556,19 @@ class UIManager {
     toggleSelectMode() {
         this.selectMode = !this.selectMode;
         const btn = document.getElementById('selectModeBtn');
-        const exportBtn = document.getElementById('exportBtn');
+        const quotationBtn = document.getElementById('quotationBtn');
 
         if (this.selectMode) {
             btn.innerHTML = '<span class="icon">❌</span> Exit Select';
-            exportBtn.style.display = 'flex';
+            quotationBtn.style.display = 'flex';
         } else {
             btn.innerHTML = '<span class="icon">☑️</span> Select Mode';
-            exportBtn.style.display = 'none';
+            quotationBtn.style.display = 'none';
             this.selectedRows.clear();
         }
 
         this.updateTableDisplay();
+        this.updateSelectedCount();
     }
 
     toggleRowSelection(index, selected) {
@@ -500,6 +578,8 @@ class UIManager {
             this.selectedRows.delete(index);
         }
         this.updateTableDisplay();
+        this.updateSelectedCount();
+        this.updateSelectAllCheckbox();
     }
 
     selectAllRows(selected) {
@@ -509,22 +589,135 @@ class UIManager {
             this.selectedRows.clear();
         }
         this.updateTableDisplay();
+        this.updateSelectedCount();
     }
 
-    // Export functionality
-    exportSelected() {
+    updateSelectAllCheckbox() {
+        const checkbox = document.getElementById('selectAllCheckbox');
+        if (!checkbox) return;
+
+        const visibleRowCount = this.filteredResults.length;
+        const selectedVisibleCount = this.filteredResults.filter((_, index) =>
+            this.selectedRows.has(index)).length;
+
+        if (selectedVisibleCount === 0) {
+            checkbox.indeterminate = false;
+            checkbox.checked = false;
+        } else if (selectedVisibleCount === visibleRowCount) {
+            checkbox.indeterminate = false;
+            checkbox.checked = true;
+        } else {
+            checkbox.indeterminate = true;
+            checkbox.checked = false;
+        }
+    }
+
+    updateSelectedCount() {
+        const countSpan = document.getElementById('selectedCount');
+        if (countSpan) {
+            countSpan.textContent = this.selectedRows.size;
+        }
+    }
+
+    // Quotation functionality
+    showQuotationModal() {
         if (this.selectedRows.size === 0) {
             this.addNotification(CONFIG.MESSAGES.NO_ROWS_SELECTED, null, null, 'warning');
             return;
         }
 
-        const selectedData = Array.from(this.selectedRows).map(index => this.filteredResults[index]);
-        window.appController.exportData(selectedData);
+        this.updateQuotationModal();
+        this.showModal('quotationModal');
+    }
+
+    updateQuotationModal() {
+        const container = document.getElementById('quotationItemsList');
+        const selectedItems = Array.from(this.selectedRows).map(index => this.filteredResults[index]);
+
+        container.innerHTML = selectedItems.map((item, index) => {
+            const portal = this.portals.find(p => p.id === item.portal_id);
+            const condition = this.conditions.find(c => c.id === item.condition_id);
+
+            return `
+                <div class="quotation-item" data-index="${index}">
+                    <div class="quotation-item-header">
+                        <span class="quotation-item-part">${item.part_number || 'N/A'}</span>
+                        <span class="quotation-item-portal">${portal ? portal.name : 'Unknown'}</span>
+                    </div>
+                    <div class="quotation-item-fields">
+                        <div class="quotation-field-group">
+                            <label>Description:</label>
+                            <input type="text" data-field="description" value="${item.description || ''}">
+                        </div>
+                        <div class="quotation-field-group">
+                            <label>Condition:</label>
+                            <input type="text" data-field="condition" value="${condition && condition.id !== 0 ? condition.code : ''}">
+                        </div>
+                        <div class="quotation-field-group">
+                            <label>Price ($):</label>
+                            <input type="number" step="0.01" data-field="price" value="${item.price || ''}">
+                        </div>
+                        <div class="quotation-field-group">
+                            <label>Lead Time:</label>
+                            <input type="text" data-field="lead_time" value="${item.lead_time || ''}">
+                        </div>
+                        <div class="quotation-field-group">
+                            <label>Quantity:</label>
+                            <input type="number" data-field="qty" value="${item.qty || 1}">
+                        </div>
+                        <div class="quotation-field-group">
+                            <label>Logistics Price ($):</label>
+                            <input type="number" step="0.01" data-field="logistics_price" value="0">
+                        </div>
+                        <div class="quotation-field-group">
+                            <label>Markup (≥1):</label>
+                            <input type="number" step="0.1" min="1" data-field="markup" value="1.0">
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    getQuotationData() {
+        const quotationNumber = document.getElementById('quotationNumber').value.trim();
+
+        if (!quotationNumber) {
+            this.addNotification(CONFIG.MESSAGES.NO_QUOTATION_NUMBER, null, null, 'warning');
+            return null;
+        }
+
+        const items = [];
+        document.querySelectorAll('.quotation-item').forEach(itemEl => {
+            const index = parseInt(itemEl.dataset.index);
+            const originalItem = Array.from(this.selectedRows)[index];
+            const result = this.filteredResults[originalItem];
+
+            const item = {
+                portal_id: result.portal_id,
+                part_number: itemEl.querySelector('[data-field="description"]').value || result.part_number,
+                description: itemEl.querySelector('[data-field="description"]').value || result.description,
+                condition: itemEl.querySelector('[data-field="condition"]').value,
+                price: parseFloat(itemEl.querySelector('[data-field="price"]').value) || 0,
+                lead_time: itemEl.querySelector('[data-field="lead_time"]').value || result.lead_time,
+                qty: parseInt(itemEl.querySelector('[data-field="qty"]').value) || 1,
+                logistics_price: parseFloat(itemEl.querySelector('[data-field="logistics_price"]').value) || 0,
+                markup: parseFloat(itemEl.querySelector('[data-field="markup"]').value) || 1.0
+            };
+
+            items.push(item);
+        });
+
+        return {
+            quotation_number: quotationNumber,
+            items: items
+        };
     }
 
     // Notification management
     addNotification(message, portalId = null, partNumber = null, type = 'error') {
         const portal = portalId ? this.portals.find(p => p.id === portalId) : null;
+
         const notification = {
             id: Date.now() + Math.random(),
             type: type,
@@ -543,6 +736,8 @@ class UIManager {
 
         this.updateNotificationDisplay();
         this.updateErrorCounter();
+
+        // Don't auto-show panel anymore, just update counter
     }
 
     updateNotificationDisplay() {
@@ -579,10 +774,7 @@ class UIManager {
         counter.textContent = count;
         counter.classList.toggle('zero', count === 0);
 
-        // Auto-show panel if new error
-        if (count > 0 && !document.getElementById('errorPanel').classList.contains('show')) {
-            this.showErrorPanel();
-        }
+        // Don't auto-show panel, just update counter
     }
 
     // Error panel management
@@ -652,6 +844,7 @@ class UIManager {
 
         // Remove from filters
         this.currentFilters.portal_ids = this.currentFilters.portal_ids.filter(id => id !== fileId);
+
         // Update displays
         this.updateFilterDisplays();
         this.updateFilterButton();
@@ -667,6 +860,7 @@ class UIManager {
         this.initResultsTable();
         this.hideProgress();
         this.selectedRows.clear();
+        this.updateSelectedCount();
 
         const partNumbers = this.getPartNumbers();
         this.showProgress(0, partNumbers.length);
@@ -699,4 +893,8 @@ function performLogin() {
 
 function cancelLogin() {
     window.appController.cancelLogin();
+}
+
+function formQuotation() {
+    window.appController.formQuotation();
 }

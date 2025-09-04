@@ -124,11 +124,11 @@ class APIClient {
         this.cancelRequest('search');
     }
 
-    // Export selected data
-    async exportData(selectedData) {
-        return this.request(CONFIG.ENDPOINTS.EXPORT, {
+    // Form quotation
+    async formQuotation(quotationData) {
+        return this.request(CONFIG.ENDPOINTS.QUOTATION, {
             method: 'POST',
-            body: JSON.stringify(selectedData),
+            body: JSON.stringify(quotationData),
             download: true
         });
     }
@@ -195,26 +195,26 @@ class StreamingResponseHandler {
                             this.processedCount++;
                             this.onProgress?.(this.processedCount);
 
-                            for (const result of data) {
-                                // Check if this is an error from server
-                                if (result.success === false) {
-                                    this.onError?.(result.error, result.portal_id, result.requested_part_number);
-                                } else {
-                                    if (result.offers && result.offers.length > 0) {
+                            // Check if this is an error from server
+                            for (const searchRes of data) {
+                                if (searchRes.success === false) {
+                                    this.onError?.(searchRes.error, searchRes.portal_id, searchRes.requested_part_number);
+                                } else if (searchRes.success === true) {
+                                    if (searchRes.offers && searchRes.offers.length > 0) {
                                         // Process offers
-                                        result.offers.forEach(offer => {
+                                        searchRes.offers.forEach(offer => {
                                             this.onResult?.({
                                                 ...offer,
-                                                portal_id: result.portal_id,
-                                                requested_part_number: result.requested_part_number
+                                                portal_id: searchRes.portal_id,
+                                                requested_part_number: searchRes.requested_part_number
                                             });
                                         });
                                     } else {
                                         // No offers found - show info message
                                         this.onError?.(
-                                            `${CONFIG.MESSAGES.PART_NOT_FOUND}: ${result.requested_part_number}`,
-                                            result.portal_id,
-                                            result.requested_part_number,
+                                            `${CONFIG.MESSAGES.PART_NOT_FOUND}: ${searchRes.requested_part_number}`,
+                                            searchRes.portal_id,
+                                            searchRes.requested_part_number,
                                             'info'
                                         );
                                     }
