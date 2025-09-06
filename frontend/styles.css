@@ -211,42 +211,20 @@ body {
     border-bottom: 1px solid #e2e8f0;
 }
 
-/* Part group headers */
-.part-group-header {
-    background: #f1f5f9 !important;
+/* Part separator rows */
+.part-separator {
+    background: #bfdbfe !important;
     font-weight: 600;
-    cursor: pointer;
-    border-bottom: 2px solid #e2e8f0 !important;
+    border-bottom: 2px solid #93c5fd !important;
 }
 
-.part-group-header td {
-    border-bottom: 2px solid #e2e8f0 !important;
+.part-separator td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 2px solid #93c5fd !important;
+    color: #1e40af;
 }
 
-.part-group-header:hover {
-    background: #e2e8f0 !important;
-}
-
-.expand-icon {
-    margin-right: 0.5rem;
-    font-weight: bold;
-    transition: transform 0.2s;
-}
-
-.expand-icon.expanded {
-    transform: rotate(90deg);
-}
-
-/* Part group rows */
-.part-group-row {
-    display: none;
-}
-
-.part-group-row.expanded {
-    display: table-row;
-}
-
-.results-table tbody tr:hover:not(.part-group-header) {
+.results-table tbody tr:hover:not(.part-separator) {
     background: #f8fafc;
 }
 
@@ -260,58 +238,110 @@ body {
     white-space: pre-wrap;
 }
 
-/* Column widths - adjusted for checkbox column */
-.results-table th:nth-child(1), .results-table td:nth-child(1) {
+/* Column widths - with checkbox column */
+.results-table.select-mode th:nth-child(1), .results-table.select-mode td:nth-child(1) {
     width: 50px;
 }
 
 /* Checkbox */
-.results-table th:nth-child(2), .results-table td:nth-child(2) {
+.results-table.select-mode th:nth-child(2), .results-table.select-mode td:nth-child(2) {
     width: 120px;
 }
 
 /* Portal */
-.results-table th:nth-child(3), .results-table td:nth-child(3) {
+.results-table.select-mode th:nth-child(3), .results-table.select-mode td:nth-child(3) {
     width: 140px;
 }
 
 /* Part Number */
-.results-table th:nth-child(4), .results-table td:nth-child(4) {
+.results-table.select-mode th:nth-child(4), .results-table.select-mode td:nth-child(4) {
     width: 250px;
 }
 
 /* Description */
-.results-table th:nth-child(5), .results-table td:nth-child(5) {
+.results-table.select-mode th:nth-child(5), .results-table.select-mode td:nth-child(5) {
     width: 100px;
 }
 
 /* Condition */
-.results-table th:nth-child(6), .results-table td:nth-child(6) {
+.results-table.select-mode th:nth-child(6), .results-table.select-mode td:nth-child(6) {
     width: 100px;
 }
 
 /* Price */
-.results-table th:nth-child(7), .results-table td:nth-child(7) {
+.results-table.select-mode th:nth-child(7), .results-table.select-mode td:nth-child(7) {
     width: 80px;
 }
 
 /* QTY */
-.results-table th:nth-child(8), .results-table td:nth-child(8) {
+.results-table.select-mode th:nth-child(8), .results-table.select-mode td:nth-child(8) {
     width: 120px;
 }
 
 /* Lead Time */
-.results-table th:nth-child(9), .results-table td:nth-child(9) {
+.results-table.select-mode th:nth-child(9), .results-table.select-mode td:nth-child(9) {
     width: 120px;
 }
 
 /* Warehouse */
-.results-table th:nth-child(10), .results-table td:nth-child(10) {
+.results-table.select-mode th:nth-child(10), .results-table.select-mode td:nth-child(10) {
     width: 180px;
 }
 
 /* Interchangeable */
-.results-table th:nth-child(11), .results-table td:nth-child(11) {
+.results-table.select-mode th:nth-child(11), .results-table.select-mode td:nth-child(11) {
+    width: 200px;
+}
+
+/* Other Info */
+
+/* Column widths - without checkbox column */
+.results-table:not(.select-mode) th:nth-child(1), .results-table:not(.select-mode) td:nth-child(1) {
+    width: 120px;
+}
+
+/* Portal */
+.results-table:not(.select-mode) th:nth-child(2), .results-table:not(.select-mode) td:nth-child(2) {
+    width: 140px;
+}
+
+/* Part Number */
+.results-table:not(.select-mode) th:nth-child(3), .results-table:not(.select-mode) td:nth-child(3) {
+    width: 250px;
+}
+
+/* Description */
+.results-table:not(.select-mode) th:nth-child(4), .results-table:not(.select-mode) td:nth-child(4) {
+    width: 100px;
+}
+
+/* Condition */
+.results-table:not(.select-mode) th:nth-child(5), .results-table:not(.select-mode) td:nth-child(5) {
+    width: 100px;
+}
+
+/* Price */
+.results-table:not(.select-mode) th:nth-child(6), .results-table:not(.select-mode) td:nth-child(6) {
+    width: 80px;
+}
+
+/* QTY */
+.results-table:not(.select-mode) th:nth-child(7), .results-table:not(.select-mode) td:nth-child(7) {
+    width: 120px;
+}
+
+/* Lead Time */
+.results-table:not(.select-mode) th:nth-child(8), .results-table:not(.select-mode) td:nth-child(8) {
+    width: 120px;
+}
+
+/* Warehouse */
+.results-table:not(.select-mode) th:nth-child(9), .results-table:not(.select-mode) td:nth-child(9) {
+    width: 180px;
+}
+
+/* Interchangeable */
+.results-table:not(.select-mode) th:nth-child(10), .results-table:not(.select-mode) td:nth-child(10) {
     width: 200px;
 }
 
@@ -826,6 +856,27 @@ body {
     outline: none;
     border-color: #3b82f6;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.quotation-global-fields {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.quotation-global-fields h4 {
+    margin-bottom: 0.75rem;
+    color: #374151;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.quotation-global-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
 }
 
 .quotation-items-section h3 {

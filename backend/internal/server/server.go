@@ -35,7 +35,7 @@ func StartUpServer(ctx context.Context, addr string) error {
 	router.HandleFunc("POST /search", handler.Search)
 	router.HandleFunc("GET /excel", http.NotFound)
 	router.HandleFunc("POST /excel", handler.UploadExcelFile)
-	router.HandleFunc("POST /export", http.NotFound)
+	router.HandleFunc("POST /quotation", handler.FormQuotation)
 
 	server := http.Server{
 		Addr:        addr,

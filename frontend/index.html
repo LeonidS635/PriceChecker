@@ -197,6 +197,19 @@
                        placeholder="Enter quotation number">
             </div>
 
+            <div class="quotation-global-fields">
+                <div class="quotation-global-inputs">
+                    <div class="quotation-field-group">
+                        <label>Logistics Price ($):</label>
+                        <input type="number" step="1" id="globalLogisticsPrice" value="0">
+                    </div>
+                    <div class="quotation-field-group">
+                        <label>Markup (%):</label>
+                        <input type="number" step="1" min="0" id="globalMarkup" value="0">
+                    </div>
+                </div>
+            </div>
+
             <div class="quotation-items-section">
                 <h3>Selected Items</h3>
                 <div id="quotationItemsList" class="quotation-items-list"></div>

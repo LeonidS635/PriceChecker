@@ -11,6 +11,7 @@ const (
 	OH
 	AR
 	SV
+	REP
 )
 
 type Condition struct {
@@ -26,6 +27,7 @@ var Conditions = []Condition{
 	{ID: OH, Code: "OH", Name: "Overhaul"},
 	{ID: AR, Code: "AR", Name: "As Removed"},
 	{ID: SV, Code: "SV", Name: "Serviceable"},
+	{ID: REP, Code: "REP", Name: "Repaired"},
 }
 
 func GetID(cnd string) ID {
@@ -40,7 +42,28 @@ func GetID(cnd string) ID {
 		return AR
 	case "serviceable", "sv":
 		return SV
+	case "repaired", "rep":
+		return REP
 	default:
 		return Unknown
+	}
+}
+
+func GetName(id ID) string {
+	switch id {
+	case NS:
+		return "NS"
+	case NE:
+		return "NE"
+	case OH:
+		return "OH"
+	case AR:
+		return "AR"
+	case SV:
+		return "SV"
+	case REP:
+		return "REP"
+	default:
+		return ""
 	}
 }

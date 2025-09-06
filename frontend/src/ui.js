@@ -3,7 +3,6 @@ class UIManager {
     constructor() {
         this.searchResults = [];
         this.partGroups = new Map(); // Group results by part number
-        this.expandedGroups = new Set(); // Track expanded groups
         this.filteredResults = [];
         this.selectedRows = new Set();
         this.selectMode = false;
@@ -380,10 +379,12 @@ class UIManager {
     // Results table management
     initResultsTable() {
         const container = document.getElementById('resultsTable');
+
+        const tableClass = this.selectMode ? 'results-table select-mode' : 'results-table';
         const checkboxHeader = this.selectMode ? '<th><input type="checkbox" class="select-all-checkbox" id="selectAllCheckbox"></th>' : '';
 
         container.innerHTML = `
-            <table class="results-table">
+            <table class="${tableClass}">
                 <thead>
                     <tr>
                         ${checkboxHeader}
@@ -404,7 +405,6 @@ class UIManager {
 
         this.searchResults = [];
         this.partGroups.clear();
-        this.expandedGroups.clear();
         this.filteredResults = [];
         this.selectedRows.clear();
         this.updateSelectedCount();
@@ -448,7 +448,7 @@ class UIManager {
         this.updateTableDisplay(filteredGroups);
     }
 
-    // Update table display with grouped results
+    // Update table display with part separators
     updateTableDisplay(filteredGroups = null) {
         const tbody = document.getElementById('resultsTableBody');
         if (!tbody) return;
@@ -470,22 +470,17 @@ class UIManager {
 
         let rowIndex = 0;
         const rows = [];
+        const totalColumns = this.selectMode ? CONFIG.TABLE_COLUMNS.length + 1 : CONFIG.TABLE_COLUMNS.length;
 
         for (const [partNumber, results] of filteredGroups) {
-            const isExpanded = this.expandedGroups.has(partNumber);
-
-            // Add group header
+            // Add part separator
             rows.push(`
-                <tr class="part-group-header" onclick="window.uiManager.togglePartGroup('${partNumber}')">
-                    ${this.selectMode ? '<td></td>' : ''}
-                    <td colspan="${CONFIG.TABLE_COLUMNS.length}">
-                        <span class="expand-icon ${isExpanded ? 'expanded' : ''}">▶</span>
-                        ${partNumber} (${results.length} offers)
-                    </td>
+                <tr class="part-separator">
+                    <td colspan="${totalColumns}">${partNumber}</td>
                 </tr>
             `);
 
-            // Add group rows
+            // Add part rows
             results.forEach(result => {
                 const portal = this.portals.find(p => p.id === result.portal_id);
                 const condition = this.conditions.find(c => c.id === result.condition_id);
@@ -495,7 +490,7 @@ class UIManager {
                     `<td><input type="checkbox" class="row-checkbox" data-index="${rowIndex}" ${isSelected ? 'checked' : ''}></td>` : '';
 
                 rows.push(`
-                    <tr class="part-group-row ${isExpanded ? 'expanded' : ''} ${isSelected ? 'selected' : ''}">
+                    <tr class="${isSelected ? 'selected' : ''}">
                         ${checkboxCell}
                         <td>${portal ? portal.name : 'Unknown'}</td>
                         <td>${result.part_number || ''}</td>
@@ -526,16 +521,6 @@ class UIManager {
         }
 
         this.updateSelectAllCheckbox();
-    }
-
-    // Toggle part group expansion
-    togglePartGroup(partNumber) {
-        if (this.expandedGroups.has(partNumber)) {
-            this.expandedGroups.delete(partNumber);
-        } else {
-            this.expandedGroups.add(partNumber);
-        }
-        this.updateTableDisplay();
     }
 
     // Format cell content for display
@@ -665,14 +650,6 @@ class UIManager {
                             <label>Quantity:</label>
                             <input type="number" data-field="qty" value="${item.qty || 1}">
                         </div>
-                        <div class="quotation-field-group">
-                            <label>Logistics Price ($):</label>
-                            <input type="number" step="0.01" data-field="logistics_price" value="0">
-                        </div>
-                        <div class="quotation-field-group">
-                            <label>Markup (≥1):</label>
-                            <input type="number" step="0.1" min="1" data-field="markup" value="1.0">
-                        </div>
                     </div>
                 </div>
             `;
@@ -680,12 +657,15 @@ class UIManager {
     }
 
     getQuotationData() {
-        const quotationNumber = document.getElementById('quotationNumber').value.trim();
+        const quotationNumber = parseInt(document.getElementById('quotationNumber').value.trim());
 
         if (!quotationNumber) {
             this.addNotification(CONFIG.MESSAGES.NO_QUOTATION_NUMBER, null, null, 'warning');
             return null;
         }
+
+        const globalLogisticsPrice = parseFloat(document.getElementById('globalLogisticsPrice').value) || 0;
+        const globalMarkup = parseFloat(document.getElementById('globalMarkup').value) || 1.0;
 
         const items = [];
         document.querySelectorAll('.quotation-item').forEach(itemEl => {
@@ -695,14 +675,14 @@ class UIManager {
 
             const item = {
                 portal_id: result.portal_id,
-                part_number: itemEl.querySelector('[data-field="description"]').value || result.part_number,
+                part_number: itemEl.querySelector('[class="quotation-item-part"]').value || result.part_number,
                 description: itemEl.querySelector('[data-field="description"]').value || result.description,
                 condition: itemEl.querySelector('[data-field="condition"]').value,
                 price: parseFloat(itemEl.querySelector('[data-field="price"]').value) || 0,
-                lead_time: itemEl.querySelector('[data-field="lead_time"]').value || result.lead_time,
+                lead_time: parseInt(itemEl.querySelector('[data-field="lead_time"]').value || result.lead_time),
                 qty: parseInt(itemEl.querySelector('[data-field="qty"]').value) || 1,
-                logistics_price: parseFloat(itemEl.querySelector('[data-field="logistics_price"]').value) || 0,
-                markup: parseFloat(itemEl.querySelector('[data-field="markup"]').value) || 1.0
+                logistics_price: globalLogisticsPrice,
+                markup: globalMarkup
             };
 
             items.push(item);
@@ -710,7 +690,9 @@ class UIManager {
 
         return {
             quotation_number: quotationNumber,
-            items: items
+            logistics_cost: globalLogisticsPrice,
+            markup: globalMarkup,
+            offers: items
         };
     }
 

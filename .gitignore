@@ -1,5 +1,5 @@
 __pycache__/
 .idea/
 
-backend/internal/credentials/credentials.json
+backend/internal/parsers/workflow/credentialscache/credentials_cache.json
 /backend/uploads

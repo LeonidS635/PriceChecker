@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/LeonidS635/PriceChecker/backend/internal/domain"
 	"github.com/LeonidS635/PriceChecker/backend/internal/dto"
+	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals"
 )
 
 type (
@@ -72,6 +75,13 @@ func (h Handler) Search(w http.ResponseWriter, r *http.Request) {
 				}
 				resp = append(resp, status)
 			}
+
+			slices.SortFunc(
+				resp, func(l, r offersStatus) int {
+					lPortalName, rPortalName := portals.PortalNameByID[l.PortalID], portals.PortalNameByID[r.PortalID]
+					return strings.Compare(string(lPortalName), string(rPortalName))
+				},
+			)
 
 			mu.Lock()
 			if err := encoder.Encode(resp); err != nil {

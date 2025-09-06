@@ -21,6 +21,12 @@ func (m Manager) Login(ctx context.Context, creds map[domain.PortalID]dto.Creden
 	mu := &sync.Mutex{}
 	wg := &sync.WaitGroup{}
 	for portalID, c := range creds {
+		if savedC, ok := m.credentialsCache.Get(portalID); ok {
+			c = savedC
+		} else {
+			m.credentialsCache.Save(portalID, c)
+		}
+
 		if spawner, ok := spawners.Spawners[portalID]; ok {
 			w, ok := m.workers[portalID]
 			if !ok {
@@ -48,6 +54,8 @@ func (m Manager) Login(ctx context.Context, creds map[domain.PortalID]dto.Creden
 		}
 	}
 	wg.Wait()
+
+	m.credentialsCache.DumpInFile()
 
 	return errors
 }
