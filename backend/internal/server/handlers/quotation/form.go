@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/xuri/excelize/v2"
@@ -19,6 +20,7 @@ type Request struct {
 		Price       float32 `json:"price"`
 		LeadTime    int     `json:"lead_time"`
 	} `json:"offers"`
+	Incoterms     string  `json:"incoterms"`
 	LogisticsCost float32 `json:"logistics_cost"`
 	Markup        float32 `json:"markup"`
 }
@@ -243,7 +245,7 @@ func Form(req Request) *excelize.File {
 	f.MergeCell(sheetName, "D13", "E13")
 	f.MergeCell(sheetName, "D14", "E14")
 	f.SetCellValue(sheetName, "D13", "100%")
-	f.SetCellValue(sheetName, "D14", "DAP MOW")
+	f.SetCellValue(sheetName, "D14", strings.ToUpper(req.Incoterms))
 
 	f.SetCellStyle(sheetName, "G12", "G14", infoValuesStyle)
 	f.SetCellValue(sheetName, "G12", time.Now().Format("02.01.2006"))

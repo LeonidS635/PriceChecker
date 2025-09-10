@@ -664,35 +664,35 @@ class UIManager {
             return null;
         }
 
-        const globalLogisticsPrice = parseFloat(document.getElementById('globalLogisticsPrice').value) || 0;
-        const globalMarkup = parseFloat(document.getElementById('globalMarkup').value) || 1.0;
+        const incoterms = document.getElementById('incoterms').value;
+        const logisticsCost = parseFloat(document.getElementById('logisticsCost').value) || 0;
+        const markup = parseFloat(document.getElementById('markup').value) || 1.0;
 
-        const items = [];
+        const offers = [];
         document.querySelectorAll('.quotation-item').forEach(itemEl => {
             const index = parseInt(itemEl.dataset.index);
             const originalItem = Array.from(this.selectedRows)[index];
             const result = this.filteredResults[originalItem];
 
-            const item = {
+            const offer = {
                 portal_id: result.portal_id,
                 part_number: itemEl.querySelector('[class="quotation-item-part"]').value || result.part_number,
                 description: itemEl.querySelector('[data-field="description"]').value || result.description,
                 condition: itemEl.querySelector('[data-field="condition"]').value,
                 price: parseFloat(itemEl.querySelector('[data-field="price"]').value) || 0,
                 lead_time: parseInt(itemEl.querySelector('[data-field="lead_time"]').value || result.lead_time),
-                qty: parseInt(itemEl.querySelector('[data-field="qty"]').value) || 1,
-                logistics_price: globalLogisticsPrice,
-                markup: globalMarkup
+                qty: parseInt(itemEl.querySelector('[data-field="qty"]').value) || 1
             };
 
-            items.push(item);
+            offers.push(offer);
         });
 
         return {
             quotation_number: quotationNumber,
-            logistics_cost: globalLogisticsPrice,
-            markup: globalMarkup,
-            offers: items
+            incoterms: incoterms,
+            logistics_cost: logisticsCost,
+            markup: markup,
+            offers: offers
         };
     }
 

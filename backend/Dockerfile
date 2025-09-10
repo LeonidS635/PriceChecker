@@ -14,7 +14,7 @@ FROM alpine:latest
 RUN apk update && apk add --no-cache chromium
 
 WORKDIR /app
-COPY --from=builder /app/server .
+COPY --from=builder /app .
 
 EXPOSE 8081
 CMD ["./server"]

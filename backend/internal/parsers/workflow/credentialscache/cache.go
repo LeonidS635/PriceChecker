@@ -18,11 +18,9 @@ type CredentialsCache struct {
 }
 
 func NewCredentialsCache() CredentialsCache {
-	f, err := os.OpenFile(
-		"internal/parsers/workflow/credentialscache/credentials_cache.json", os.O_RDONLY|os.O_CREATE, 0666,
-	)
+	f, err := os.OpenFile("credentials/credentials.json", os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
-		log.Println(err)
+		log.Println("read:", err)
 		return CredentialsCache{
 			mu:          &sync.Mutex{},
 			credentials: make(map[domain.PortalID]dto.Credentials),
@@ -49,11 +47,9 @@ func (c CredentialsCache) Get(portalID domain.PortalID) (dto.Credentials, bool) 
 }
 
 func (c CredentialsCache) DumpInFile() {
-	f, err := os.OpenFile(
-		"internal/parsers/workflow/credentialscache/credentials_cache.json", os.O_WRONLY|os.O_TRUNC, 0666,
-	)
+	f, err := os.OpenFile("credentials/credentials.json", os.O_WRONLY|os.O_TRUNC, 0666)
 	if err != nil {
-		log.Println(err)
+		log.Println("write:", err)
 		return
 	}
 
