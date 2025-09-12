@@ -8,6 +8,7 @@ import (
 
 type Authenticator interface {
 	Login(ctx context.Context, username string, password string) error
+	Logout(ctx context.Context) error
 }
 
 type Searcher interface {

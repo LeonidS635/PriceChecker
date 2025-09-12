@@ -19,6 +19,10 @@ func (e Excel) Login(ctx context.Context, username string, password string) erro
 	return nil
 }
 
+func (e Excel) Logout(ctx context.Context) error {
+	return nil
+}
+
 func (e Excel) Search(ctx context.Context, partNumber string) ([]dto.Offer, error) {
 	return nil, nil
 }

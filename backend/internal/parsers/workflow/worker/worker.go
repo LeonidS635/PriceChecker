@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/workflow/spawners"
+	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/workflow/spawners/pool"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/workflow/types"
 )
 
@@ -13,12 +14,20 @@ type ParserWorker struct {
 	baseCtx    context.Context
 	spawner    spawners.Spawner
 	tasksQueue chan types.Task
+
+	pp pool.ParserPool
 }
 
 func NewParserWorker(ctx context.Context, spawner spawners.Spawner) ParserWorker {
-	return ParserWorker{
+	pp, _ := pool.NewParserPool(spawner)
+	w := ParserWorker{
 		baseCtx:    ctx,
 		spawner:    spawner,
 		tasksQueue: make(chan types.Task, queueSize),
+		pp:         pp,
 	}
+
+	go w.start(ctx)
+
+	return w
 }

@@ -107,6 +107,19 @@ class APIClient {
         this.cancelRequest('login');
     }
 
+    // Logout from portals
+    async logout(portals) {
+        return this.request(CONFIG.ENDPOINTS.LOGOUT, {
+            method: 'POST',
+            body: JSON.stringify({portal_ids: portals})
+        }, 'logout');
+    }
+
+    // Cancel logout request
+    cancelLogout() {
+        this.cancelRequest('logout');
+    }
+
     // Search for parts (streaming response)
     async search(partNumbers, filters) {
         return this.request(CONFIG.ENDPOINTS.SEARCH, {

@@ -12,6 +12,7 @@ import (
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/allaero"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/boeingshop"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/dasi"
+	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/excel"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/globalaviation"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/lasaero"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/proponent"
@@ -28,7 +29,7 @@ const defaultRateLimit = 4
 
 type Spawner interface {
 	Base() parsers.Authenticator
-	Spawn() (parsers.Searcher, error)
+	Spawn() (parsers.Parser, error)
 	GetRateLimit() int
 }
 
@@ -58,9 +59,8 @@ func init() {
 	}
 }
 
-//func RegisterExcelSpawner(path string) domain.PortalID {
-//	fileID := domain.PortalID(len(Spawners) + 1)
-//	Spawners[fileID] = models.NewExcelSpawner(excel.NewExcelParser, path)
-//	credentials.Credentials[fileID] = dto.Credentials{} // TODO: temporary fix
-//	return fileID
-//}
+func RegisterExcelSpawner(path string) domain.PortalID {
+	fileID := domain.PortalID(len(Spawners) + 1)
+	Spawners[fileID] = models.NewExcelSpawner(excel.NewExcelParser, path)
+	return fileID
+}

@@ -24,6 +24,10 @@ func (rp ResultsProcessor) ProcessLogin(
 	return rp.m.Login(ctx, creds)
 }
 
+func (rp ResultsProcessor) ProcessLogout(ctx context.Context, portalIDs []domain.PortalID) map[domain.PortalID]results.LoginResult {
+	return rp.m.Logout(ctx, portalIDs)
+}
+
 func (rp ResultsProcessor) ProcessSearch(
 	ctx context.Context, partNumber string, filters dto.Filter,
 ) map[domain.PortalID]results.SearchResult {

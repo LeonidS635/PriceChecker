@@ -7,6 +7,7 @@ class AppController {
         this.excelFiles = [];
         this.isSearching = false;
         this.isLoggingIn = false;
+        this.isLoggingOut = false;
     }
 
     // Initialize application
@@ -167,6 +168,102 @@ class AppController {
             this.isLoggingIn = false;
             window.uiManager.setLoginButtonLoading(false);
             window.uiManager.showLoginStatus('Login cancelled', 'info');
+        }
+    }
+
+    // Perform logout
+    async performLogout() {
+        if (this.isLoggingOut) {
+            console.log('Logout already in progress');
+            return;
+        }
+
+        const portals = window.uiManager.getLogoutPortals();
+
+        if (portals.length === 0) {
+            window.uiManager.showLoginStatus(CONFIG.MESSAGES.NO_PORTALS_SELECTED, 'error');
+            return;
+        }
+
+        this.isLoggingOut = true;
+        window.uiManager.setLogoutButtonLoading(true);
+        window.uiManager.showLoginStatus(CONFIG.MESSAGES.LOGOUT_PROCESSING, 'loading');
+
+        try {
+            const response = await apiClient.logout(portals);
+
+            // Process login results
+            const successfulLogouts = [];
+            const failedLogouts = [];
+
+            response.forEach(result => {
+                if (result.success) {
+                    successfulLogouts.push(result.portal_id);
+                } else {
+                    failedLogouts.push({
+                        portal_id: result.portal_id,
+                        error: result.error
+                    });
+
+                    // Add error to notifications
+                    window.uiManager.addNotification(
+                        result.error,
+                        result.portal_id,
+                        null,
+                        'error'
+                    );
+                }
+            });
+
+            // Update logged in portals
+            const successfulLogoutsSet = new Set(successfulLogouts);
+            this.loggedInPortals = this.loggedInPortals.filter(portal => !successfulLogoutsSet.has(portal));
+
+            // Update UI
+            window.uiManager.updatePortalStatuses(this.loggedInPortals);
+
+            // Show status message
+            if (successfulLogouts.length === portals.length) {
+                window.uiManager.showLoginStatus(
+                    `${CONFIG.MESSAGES.LOGOUT_SUCCESS}: ${successfulLogouts.length} portals`,
+                    'success'
+                );
+            } else {
+                window.uiManager.showLoginStatus(
+                    `Partial logout: ${successfulLogouts.length}/${portals.length} successful`,
+                    'success'
+                );
+            }
+
+            console.log('Logout completed:', {
+                successful: successfulLogouts.length,
+                failed: failedLogouts.length
+            });
+
+        } catch (error) {
+            console.error('Logout error:', error);
+
+            if (error.isFatal) {
+                this.handleFatalError(error);
+            } else {
+                window.uiManager.showLoginStatus(
+                    `${CONFIG.MESSAGES.LOGOUT_ERROR}: ${error.message}`,
+                    'error'
+                );
+            }
+        } finally {
+            this.isLoggingOut = false;
+            window.uiManager.setLogoutButtonLoading(false);
+        }
+    }
+
+    // Cancel logout
+    cancelLogout() {
+        if (this.isLoggingOut) {
+            apiClient.cancelLogout();
+            this.isLoggingOut = false;
+            window.uiManager.setLoginButtonLoading(false);
+            window.uiManager.showLoginStatus('Logout cancelled', 'info');
         }
     }
 

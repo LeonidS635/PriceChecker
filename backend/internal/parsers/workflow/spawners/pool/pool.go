@@ -10,13 +10,13 @@ import (
 )
 
 type ParserPool struct {
-	parsers chan parsers.Searcher
+	parsers chan parsers.Parser
 }
 
 func NewParserPool(spawner spawners.Spawner) (ParserPool, error) {
 	rateLimit := spawner.GetRateLimit()
 	pp := ParserPool{
-		parsers: make(chan parsers.Searcher, rateLimit),
+		parsers: make(chan parsers.Parser, rateLimit),
 	}
 	for i := 0; i < rateLimit; i++ {
 		searcher, err := spawner.Spawn()
@@ -29,14 +29,42 @@ func NewParserPool(spawner spawners.Spawner) (ParserPool, error) {
 	return pp, nil
 }
 
-func (pp ParserPool) Search(ctx context.Context, task types.Task) {
-	parser := <-pp.parsers // TODO: respect ctx
-	go func() {
-		defer func() {
-			pp.parsers <- parser
-		}()
+func (pp ParserPool) Login(ctx context.Context, username string, password string) error {
+	if parser := pp.get(ctx); parser != nil {
+		defer pp.put(parser)
+		return parser.Login(ctx, username, password)
+	}
+	return nil
+}
 
-		offers, err := parser.Search(ctx, task.PartNumber)
-		task.ResChan <- results.SearchResult{Offers: offers, Err: err} // TODO: respect ctx
-	}()
+func (pp ParserPool) Logout(ctx context.Context) error {
+	if parser := pp.get(ctx); parser != nil {
+		defer pp.put(parser)
+		return parser.Logout(ctx)
+	}
+	return nil
+}
+
+func (pp ParserPool) Search(ctx context.Context, task types.Task) {
+	if parser := pp.get(ctx); parser != nil {
+		go func() {
+			defer pp.put(parser)
+
+			offers, err := parser.Search(ctx, task.PartNumber)
+			task.ResChan <- results.SearchResult{Offers: offers, Err: err} // TODO: respect ctx
+		}()
+	}
+}
+
+func (pp ParserPool) get(ctx context.Context) parsers.Parser {
+	select {
+	case searcher := <-pp.parsers:
+		return searcher
+	case <-ctx.Done():
+		return nil
+	}
+}
+
+func (pp ParserPool) put(parser parsers.Parser) {
+	pp.parsers <- parser
 }

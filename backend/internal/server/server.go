@@ -32,6 +32,7 @@ func StartUpServer(ctx context.Context, addr string) error {
 	router := http.NewServeMux()
 	router.HandleFunc("GET /config", handler.GetConfig)
 	router.HandleFunc("POST /login", handler.Login)
+	router.HandleFunc("POST /logout", handler.Logout)
 	router.HandleFunc("POST /search", handler.Search)
 	router.HandleFunc("GET /excel", http.NotFound)
 	router.HandleFunc("POST /excel", handler.UploadExcelFile)

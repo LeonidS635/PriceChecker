@@ -7,6 +7,7 @@ const CONFIG = {
     ENDPOINTS: {
         CONFIG: '/config',
         LOGIN: '/login',
+        LOGOUT: '/logout',
         SEARCH: '/search',
         QUOTATION: '/quotation',
         EXCEL: '/excel'
@@ -41,6 +42,9 @@ const CONFIG = {
         LOGIN_SUCCESS: 'Login successful',
         LOGIN_ERROR: 'Login failed',
         LOGIN_PROCESSING: 'Processing login...',
+        LOGOUT_SUCCESS: 'Logout successful',
+        LOGOUT_ERROR: 'Logout failed',
+        LOGOUT_PROCESSING: 'Processing logout...',
         SEARCH_STARTING: 'Starting search...',
         SEARCH_COMPLETE: 'Search completed',
         SEARCH_CANCELLED: 'Search cancelled',

@@ -10,6 +10,7 @@ import (
 )
 
 func (s SatAir) configureLogin() {
+	s.loginC.AllowURLRevisit = true
 	s.loginC.OnResponse(
 		func(r *colly.Response) {
 			if err := json.Unmarshal(r.Body, &s.loginState.loginResponse); err != nil {

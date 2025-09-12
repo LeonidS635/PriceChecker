@@ -20,7 +20,7 @@ func (e *ExcelSpawner) Base() parsers.Authenticator {
 	return e.portalConstructor(e.path)
 }
 
-func (e *ExcelSpawner) Spawn() (parsers.Searcher, error) {
+func (e *ExcelSpawner) Spawn() (parsers.Parser, error) {
 	return e.portalConstructor(e.path), nil
 }
 

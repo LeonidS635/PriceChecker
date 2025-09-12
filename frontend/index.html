@@ -148,7 +148,10 @@
             <div id="loginStatus" class="login-status"></div>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal('portalManagementModal')">Cancel</button>
+            <button id="performLogoutBtn" class="btn btn-primary" onclick="performLogout()">Logout</button>
+            <button id="cancelLogoutBtn" class="btn btn-secondary" style="display: none;" onclick="cancelLogout()">Cancel
+                Logout
+            </button>
             <button id="performLoginBtn" class="btn btn-primary" onclick="performLogin()">Login</button>
             <button id="cancelLoginBtn" class="btn btn-secondary" style="display: none;" onclick="cancelLogin()">Cancel
                 Login

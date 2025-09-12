@@ -26,7 +26,7 @@ func (r RodSpawner) Base() parsers.Authenticator {
 	return r.portalConstructor(r.browser.MustPage())
 }
 
-func (r RodSpawner) Spawn() (parsers.Searcher, error) {
+func (r RodSpawner) Spawn() (parsers.Parser, error) {
 	if r.count > r.limit {
 		return nil, ErrRateLimitExceeded
 	}

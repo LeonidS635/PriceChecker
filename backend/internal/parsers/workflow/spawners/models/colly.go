@@ -12,7 +12,7 @@ var ErrRateLimitExceeded = errors.New("rate limit exceeded")
 
 type Spawner interface {
 	Base() parsers.Authenticator
-	Spawn() (parsers.Searcher, error)
+	Spawn() (parsers.Parser, error)
 	GetRateLimit() int
 }
 
@@ -26,7 +26,7 @@ type CollySpawner struct {
 
 func NewCollySpawner(portalConstructor func(c *colly.Collector) parsers.Parser, limit int) Spawner {
 	return &CollySpawner{
-		c:                 nil,
+		c:                 colly.NewCollector(),
 		portalConstructor: portalConstructor,
 		limit:             limit,
 	}
@@ -35,11 +35,11 @@ func NewCollySpawner(portalConstructor func(c *colly.Collector) parsers.Parser, 
 func (cp *CollySpawner) Base() parsers.Authenticator {
 	cp.count = 0 // Temp fix
 
-	cp.c = colly.NewCollector()
+	//cp.c = colly.NewCollector()
 	return cp.portalConstructor(cp.c)
 }
 
-func (cp *CollySpawner) Spawn() (parsers.Searcher, error) {
+func (cp *CollySpawner) Spawn() (parsers.Parser, error) {
 	if cp.c == nil {
 		return nil, fmt.Errorf("colly spawner: nil base collector (hint: call Base method before Spawn)")
 	}

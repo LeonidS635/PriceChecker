@@ -7,6 +7,7 @@ import (
 
 type SatAir struct {
 	loginC       *colly.Collector
+	logoutC      *colly.Collector
 	offerSearchC *colly.Collector
 	addInfoC     *colly.Collector
 	plantsC      *colly.Collector
@@ -18,6 +19,7 @@ type SatAir struct {
 func NewSatAir(baseC *colly.Collector) parsers.Parser {
 	s := SatAir{
 		loginC:       baseC,
+		logoutC:      baseC.Clone(),
 		offerSearchC: baseC.Clone(),
 		addInfoC:     baseC.Clone(),
 		plantsC:      baseC.Clone(),
@@ -25,6 +27,7 @@ func NewSatAir(baseC *colly.Collector) parsers.Parser {
 		searchState:  newSearchSharedState(),
 	}
 	s.configureLogin()
+	s.configureLogout()
 	s.configureSearch()
 
 	return s

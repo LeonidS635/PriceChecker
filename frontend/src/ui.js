@@ -243,6 +243,19 @@ class UIManager {
         return credentials;
     }
 
+    // Get logout portals from modal
+    getLogoutPortals() {
+        const portals = [];
+        const selectedPortals = Array.from(document.querySelectorAll('.portal-checkbox:checked'));
+
+        selectedPortals.forEach(checkbox => {
+            const portalId = parseInt(checkbox.value);
+            portals.push(portalId);
+        });
+
+        return portals;
+    }
+
     // Show login status
     showLoginStatus(message, type) {
         const statusDiv = document.getElementById('loginStatus');
@@ -262,6 +275,22 @@ class UIManager {
             loginBtn.innerHTML = '<span class="icon">⏳</span> Logging in...';
         } else {
             loginBtn.innerHTML = '<span class="icon">🔑</span> Login';
+        }
+    }
+
+    // Set logout button loading state
+    setLogoutButtonLoading(loading) {
+        const logoutBtn = document.getElementById('performLogoutBtn');
+        const cancelBtn = document.getElementById('cancelLogoutBtn');
+
+        logoutBtn.disabled = loading;
+        logoutBtn.style.display = loading ? 'none' : 'flex';
+        cancelBtn.style.display = loading ? 'flex' : 'none';
+
+        if (loading) {
+            logoutBtn.innerHTML = '<span class="icon">⏳</span> Logging out...';
+        } else {
+            logoutBtn.innerHTML = '<span class="icon">🔑</span> Logout';
         }
     }
 
@@ -871,6 +900,10 @@ function applyFilters() {
 
 function performLogin() {
     window.appController.performLogin();
+}
+
+function performLogout() {
+    window.appController.performLogout();
 }
 
 function cancelLogin() {
