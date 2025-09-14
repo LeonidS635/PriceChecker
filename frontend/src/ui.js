@@ -693,6 +693,7 @@ class UIManager {
             return null;
         }
 
+        const paymentTerms = document.getElementById('paymentTerms').value;
         const incoterms = document.getElementById('incoterms').value;
         const logisticsCost = parseFloat(document.getElementById('logisticsCost').value) || 0;
         const markup = parseFloat(document.getElementById('markup').value) || 1.0;
@@ -718,6 +719,7 @@ class UIManager {
 
         return {
             quotation_number: quotationNumber,
+            payment_terms: paymentTerms,
             incoterms: incoterms,
             logistics_cost: logisticsCost,
             markup: markup,

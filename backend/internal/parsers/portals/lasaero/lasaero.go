@@ -16,7 +16,7 @@ type LASAero struct {
 
 func NewLASAero(baseC *colly.Collector) parsers.Parser {
 	l := LASAero{
-		tokenC:      baseC,
+		tokenC:      baseC.Clone(),
 		loginC:      baseC.Clone(),
 		searchC:     baseC.Clone(),
 		loginState:  newLoginSharedState(),

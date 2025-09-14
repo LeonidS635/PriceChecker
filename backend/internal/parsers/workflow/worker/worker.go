@@ -11,7 +11,6 @@ import (
 const queueSize = 100
 
 type ParserWorker struct {
-	baseCtx    context.Context
 	spawner    spawners.Spawner
 	tasksQueue chan types.Task
 
@@ -21,7 +20,6 @@ type ParserWorker struct {
 func NewParserWorker(ctx context.Context, spawner spawners.Spawner) ParserWorker {
 	pp, _ := pool.NewParserPool(spawner)
 	w := ParserWorker{
-		baseCtx:    ctx,
 		spawner:    spawner,
 		tasksQueue: make(chan types.Task, queueSize),
 		pp:         pp,

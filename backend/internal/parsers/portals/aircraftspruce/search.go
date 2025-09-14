@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/LeonidS635/PriceChecker/backend/internal/dto"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/utils"
@@ -13,13 +14,19 @@ import (
 )
 
 func (a AircraftSpruce) Search(ctx context.Context, partNumber string) ([]dto.Offer, error) {
+	a.page = a.page.Context(ctx)
+
 	if err := a.page.Navigate(fmt.Sprintf(searchURL, url.PathEscape(partNumber))); err != nil {
+		return nil, err
+	}
+
+	if err := a.page.WaitDOMStable(300*time.Millisecond, 0.5); err != nil {
 		return nil, err
 	}
 
 	var offer dto.Offer
 
-	partNumberEl, err := a.page.MustWaitDOMStable().Sleeper(rod.NotFoundSleeper).Element("div[class=\"prModel\"")
+	partNumberEl, err := a.page.Sleeper(rod.NotFoundSleeper).Element("div[class=\"prModel\"")
 	if err != nil {
 		if errors.Is(err, &rod.ElementNotFoundError{}) {
 			return nil, nil

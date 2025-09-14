@@ -45,12 +45,12 @@ func (pp ParserPool) Logout(ctx context.Context) error {
 	return nil
 }
 
-func (pp ParserPool) Search(ctx context.Context, task types.Task) {
-	if parser := pp.get(ctx); parser != nil {
+func (pp ParserPool) Search(task types.Task) {
+	if parser := pp.get(task.Ctx); parser != nil {
 		go func() {
 			defer pp.put(parser)
 
-			offers, err := parser.Search(ctx, task.PartNumber)
+			offers, err := parser.Search(task.Ctx, task.PartNumber)
 			task.ResChan <- results.SearchResult{Offers: offers, Err: err} // TODO: respect ctx
 		}()
 	}

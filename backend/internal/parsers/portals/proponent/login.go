@@ -3,11 +3,14 @@ package proponent
 import (
 	"context"
 	"errors"
+	"net/http"
 
+	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/utils"
 	"github.com/gocolly/colly/v2"
 )
 
 func (p Proponent) configureLogin() {
+	p.viewStateC.AllowURLRevisit = true
 	p.viewStateC.OnHTML(
 		"input[name=\"__EVENTTARGET\"]", func(input *colly.HTMLElement) {
 			p.loginState.eventTarget = input.Attr("value")
@@ -39,15 +42,25 @@ func (p Proponent) configureLogin() {
 		},
 	)
 
+	p.loginC.AllowURLRevisit = true
+	p.loginC.SetRedirectHandler(
+		func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	)
 	p.loginC.OnResponseHeaders(
 		func(r *colly.Response) {
-			if r.Request.URL.String() == loginURL {
-				p.loginState.err = errors.New("invalid credentials")
+			if r != nil && r.StatusCode == http.StatusFound {
+				return
 			}
+			p.loginState.err = errors.New("invalid credentials")
 		},
 	)
 	p.loginC.OnError(
-		func(_ *colly.Response, err error) {
+		func(r *colly.Response, err error) {
+			if r != nil && r.StatusCode == http.StatusFound {
+				return
+			}
 			p.loginState.err = err
 		},
 	)
@@ -57,8 +70,8 @@ func (p Proponent) Login(ctx context.Context, username string, password string) 
 	if err := p.viewStateC.Visit(loginURL); err != nil {
 		return err
 	}
-	if err := p.loginC.Post(
-		loginURL, map[string]string{
+	if err := utils.PostIgnoringStatusCode(
+		http.StatusFound, p.loginC, loginURL, map[string]string{
 			"__EVENTTARGET":                 p.loginState.eventTarget,
 			"__EVENTARGUMENT":               p.loginState.eventArgument,
 			"__EVENTVALIDATION":             p.loginState.eventValidation,

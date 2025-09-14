@@ -10,6 +10,7 @@ import (
 )
 
 func (l LASAero) configureLogin() {
+	l.tokenC.AllowURLRevisit = true
 	l.tokenC.OnHTML(
 		"input[name=\"csrfmiddlewaretoken\"]", func(e *colly.HTMLElement) {
 			l.loginState.token = e.Attr("value")
@@ -21,6 +22,7 @@ func (l LASAero) configureLogin() {
 		},
 	)
 
+	l.loginC.AllowURLRevisit = true
 	l.loginC.OnRequest(
 		func(r *colly.Request) {
 			r.Headers.Set("Referer", "https://www.lasaero.com/account")

@@ -9,13 +9,13 @@ import (
 
 	"github.com/LeonidS635/PriceChecker/backend/internal/dto"
 	"github.com/LeonidS635/PriceChecker/backend/internal/dto/conditions"
+	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/utils"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gocolly/colly/v2"
 )
 
 func (a *AeroBay) configureSearch() {
 	a.searchC.AllowURLRevisit = true
-
 	a.searchC.OnHTML(
 		"body", func(body *colly.HTMLElement) {
 			parts := body.DOM.Find("div[class=\"parent_product_box_list\"]").EachIter()
@@ -23,7 +23,7 @@ func (a *AeroBay) configureSearch() {
 				var offer dto.Offer
 
 				offer.PartNumber = strings.TrimSpace(p.Find("h5").First().Text())
-				if strings.ToUpper(offer.PartNumber) != strings.ToUpper(a.searchState.requestedPN) {
+				if !strings.EqualFold(offer.PartNumber, a.searchState.requestedPN) {
 					a.searchState.exactMatch = false
 					return
 				}
@@ -62,9 +62,10 @@ func (a *AeroBay) configureSearch() {
 	)
 	a.searchC.OnError(
 		func(r *colly.Response, err error) {
-			if r.StatusCode != http.StatusNotFound {
-				a.searchState.err = err
+			if r != nil && r.StatusCode == http.StatusNotFound {
+				return
 			}
+			a.searchState.err = err
 		},
 	)
 }
@@ -80,7 +81,7 @@ func (a *AeroBay) Search(ctx context.Context, partNumber string) ([]dto.Offer, e
 	q.Set("item", strings.ToUpper(partNumber))
 	u.RawQuery = q.Encode()
 
-	if err := a.searchC.Visit(u.String()); err != nil {
+	if err := utils.VisitIgnoringStatusCode(http.StatusNotFound, a.searchC, u.String()); err != nil {
 		return nil, err
 	}
 	return a.searchState.offers, a.searchState.err

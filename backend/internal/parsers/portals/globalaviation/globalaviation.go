@@ -8,6 +8,7 @@ import (
 type GlobalAviation struct {
 	javaxLoginC        *colly.Collector
 	loginC             *colly.Collector
+	logoutC            *colly.Collector
 	javaxSearchC       *colly.Collector
 	updateJavaxSearchC *colly.Collector
 	searchC            *colly.Collector
@@ -20,6 +21,7 @@ func NewGlobalAviation(baseC *colly.Collector) parsers.Parser {
 	g := GlobalAviation{
 		javaxLoginC:        baseC.Clone(),
 		loginC:             baseC.Clone(),
+		logoutC:            baseC.Clone(),
 		javaxSearchC:       baseC.Clone(),
 		updateJavaxSearchC: baseC.Clone(),
 		searchC:            baseC.Clone(),

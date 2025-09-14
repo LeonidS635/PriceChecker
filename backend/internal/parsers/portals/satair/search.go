@@ -63,7 +63,7 @@ func (s SatAir) configureSearch() {
 
 			for i, j := 0, batch*batchSize; i < len(s.searchState.addInfoResponse.ProductDetails) && j < len(s.searchState.offerResponse.Products); i, j = i+1, j+1 {
 				var offer dto.Offer
-				offer.PartNumber = s.searchState.offerResponse.Products[j].Name
+				offer.PartNumber = s.searchState.offerResponse.Products[j].PartNumber
 				offer.Description = s.searchState.offerResponse.Products[j].Description
 				offer.Condition = conditions.GetID(s.searchState.offerResponse.Products[j].Condition)
 				offer.QTY = s.searchState.addInfoResponse.ProductDetails[i].Details.QTY

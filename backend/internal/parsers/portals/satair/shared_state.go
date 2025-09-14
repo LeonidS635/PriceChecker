@@ -27,7 +27,6 @@ type searchSharedState struct {
 		Products []struct {
 			ID              string `json:"id"`
 			PartNumber      string `json:"manufacturerAid"`
-			Name            string `json:"materialNumberExternal"`
 			Description     string `json:"name"`
 			Condition       string `json:"state"`
 			Interchangeable []struct {

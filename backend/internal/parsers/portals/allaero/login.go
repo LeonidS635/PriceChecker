@@ -10,6 +10,7 @@ import (
 
 func (a AllAero) configureLogin() {
 	// Parse verification token with GET request
+	a.tokenC.AllowURLRevisit = true
 	a.tokenC.OnHTML(
 		"input[name=\"__RequestVerificationToken\"]", func(e *colly.HTMLElement) {
 			a.loginState.token = e.Attr("value")
@@ -21,6 +22,7 @@ func (a AllAero) configureLogin() {
 		},
 	)
 
+	a.loginC.AllowURLRevisit = true
 	//a.loginC.OnResponseHeaders(
 	//	func(r *colly.Response) {
 	//		if r.Request.URL.String() == loginURL && r.Request.Method == http.MethodPost

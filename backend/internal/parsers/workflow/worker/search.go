@@ -12,7 +12,7 @@ func (w ParserWorker) Search(ctx context.Context, partNumber string) <-chan resu
 
 	select {
 	case <-ctx.Done():
-	case w.tasksQueue <- types.Task{PartNumber: partNumber, ResChan: resChan}:
+	case w.tasksQueue <- types.Task{Ctx: ctx, PartNumber: partNumber, ResChan: resChan}:
 	}
 
 	return resChan
