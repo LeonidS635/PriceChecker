@@ -27,7 +27,7 @@ func (m Manager) Login(ctx context.Context, creds map[domain.PortalID]dto.Creden
 			continue
 		}
 
-		if savedC, ok := m.credentialsCache.Get(portalID); ok {
+		if savedC, ok := m.credentialsCache.Get(portalID); ok && (len(c.Username) == 0 && len(c.Password) == 0) {
 			c = savedC
 		} else {
 			m.credentialsCache.Save(portalID, c)
