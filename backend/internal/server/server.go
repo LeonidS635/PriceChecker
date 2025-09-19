@@ -27,15 +27,18 @@ func corsHandler(next http.Handler) http.Handler {
 }
 
 func StartUpServer(ctx context.Context, addr string) error {
-	handler := handlers.NewHandler(ctx)
+	handler, err := handlers.NewHandler(ctx)
+	if err != nil {
+		return err
+	}
 
 	router := http.NewServeMux()
 	router.HandleFunc("GET /config", handler.GetConfig)
 	router.HandleFunc("POST /login", handler.Login)
 	router.HandleFunc("POST /logout", handler.Logout)
 	router.HandleFunc("POST /search", handler.Search)
-	router.HandleFunc("GET /excel", http.NotFound)
 	router.HandleFunc("POST /excel", handler.UploadExcelFile)
+	router.HandleFunc("DELETE /excel", handler.DeleteExcelFile)
 	router.HandleFunc("POST /quotation", handler.FormQuotation)
 
 	server := http.Server{

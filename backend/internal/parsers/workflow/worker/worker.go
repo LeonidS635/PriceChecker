@@ -3,29 +3,29 @@ package worker
 import (
 	"context"
 
-	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/workflow/spawners"
-	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/workflow/spawners/pool"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/workflow/types"
 )
 
-const queueSize = 100
-
-type ParserWorker struct {
-	spawner    spawners.Spawner
-	tasksQueue chan types.Task
-
-	pp pool.ParserPool
+type pool interface {
+	Login(ctx context.Context, username string, password string) error
+	Logout(ctx context.Context) error
+	Search(task types.Task)
 }
 
-func NewParserWorker(ctx context.Context, spawner spawners.Spawner) ParserWorker {
-	pp, _ := pool.NewParserPool(spawner)
-	w := ParserWorker{
-		spawner:    spawner,
+type Worker struct {
+	tasksQueue chan types.Task
+	pool       pool
+}
+
+const queueSize = 100
+
+func New(ctx context.Context, p pool) (Worker, error) {
+	w := Worker{
 		tasksQueue: make(chan types.Task, queueSize),
-		pp:         pp,
+		pool:       p,
 	}
 
 	go w.start(ctx)
 
-	return w
+	return w, nil
 }

@@ -189,7 +189,8 @@ body {
     border-collapse: separate;
     border-spacing: 0;
     font-size: 0.875rem;
-    min-width: 1200px; /* Ensure minimum width for all columns */
+    min-width: 1200px;
+    /* Ensure minimum width for all columns */
 }
 
 .results-table th,
@@ -238,117 +239,140 @@ body {
     white-space: pre-wrap;
 }
 
-/* Column widths - with checkbox column */
-.results-table.select-mode th:nth-child(1), .results-table.select-mode td:nth-child(1) {
-    width: 50px;
-}
-
-/* Checkbox */
-.results-table.select-mode th:nth-child(2), .results-table.select-mode td:nth-child(2) {
+/* Column widths - ПРАВИЛЬНЫЕ фиксированные ширины */
+/* Обычная таблица без чекбоксов */
+.results-table th:nth-child(1),
+.results-table td:nth-child(1) {
     width: 120px;
 }
 
 /* Portal */
-.results-table.select-mode th:nth-child(3), .results-table.select-mode td:nth-child(3) {
+.results-table th:nth-child(2),
+.results-table td:nth-child(2) {
     width: 140px;
 }
 
 /* Part Number */
-.results-table.select-mode th:nth-child(4), .results-table.select-mode td:nth-child(4) {
+.results-table th:nth-child(3),
+.results-table td:nth-child(3) {
     width: 250px;
 }
 
 /* Description */
-.results-table.select-mode th:nth-child(5), .results-table.select-mode td:nth-child(5) {
+.results-table th:nth-child(4),
+.results-table td:nth-child(4) {
     width: 100px;
 }
 
 /* Condition */
-.results-table.select-mode th:nth-child(6), .results-table.select-mode td:nth-child(6) {
+.results-table th:nth-child(5),
+.results-table td:nth-child(5) {
     width: 100px;
 }
 
 /* Price */
-.results-table.select-mode th:nth-child(7), .results-table.select-mode td:nth-child(7) {
+.results-table th:nth-child(6),
+.results-table td:nth-child(6) {
     width: 80px;
 }
 
 /* QTY */
-.results-table.select-mode th:nth-child(8), .results-table.select-mode td:nth-child(8) {
+.results-table th:nth-child(7),
+.results-table td:nth-child(7) {
     width: 120px;
 }
 
 /* Lead Time */
-.results-table.select-mode th:nth-child(9), .results-table.select-mode td:nth-child(9) {
+.results-table th:nth-child(8),
+.results-table td:nth-child(8) {
     width: 120px;
 }
 
 /* Warehouse */
-.results-table.select-mode th:nth-child(10), .results-table.select-mode td:nth-child(10) {
+.results-table th:nth-child(9),
+.results-table td:nth-child(9) {
     width: 180px;
 }
 
 /* Interchangeable */
-.results-table.select-mode th:nth-child(11), .results-table.select-mode td:nth-child(11) {
+.results-table th:nth-child(10),
+.results-table td:nth-child(10) {
     width: 200px;
 }
 
 /* Other Info */
 
-/* Column widths - without checkbox column */
-.results-table:not(.select-mode) th:nth-child(1), .results-table:not(.select-mode) td:nth-child(1) {
+/* В селект моде добавляется ПЕРВЫЙ столбец для чекбоксов, остальные СДВИГАЮТСЯ */
+.results-table.select-mode th:nth-child(1),
+.results-table.select-mode td:nth-child(1) {
+    width: 50px;
+}
+
+/* Checkbox */
+.results-table.select-mode th:nth-child(2),
+.results-table.select-mode td:nth-child(2) {
     width: 120px;
 }
 
 /* Portal */
-.results-table:not(.select-mode) th:nth-child(2), .results-table:not(.select-mode) td:nth-child(2) {
+.results-table.select-mode th:nth-child(3),
+.results-table.select-mode td:nth-child(3) {
     width: 140px;
 }
 
 /* Part Number */
-.results-table:not(.select-mode) th:nth-child(3), .results-table:not(.select-mode) td:nth-child(3) {
+.results-table.select-mode th:nth-child(4),
+.results-table.select-mode td:nth-child(4) {
     width: 250px;
 }
 
 /* Description */
-.results-table:not(.select-mode) th:nth-child(4), .results-table:not(.select-mode) td:nth-child(4) {
+.results-table.select-mode th:nth-child(5),
+.results-table.select-mode td:nth-child(5) {
     width: 100px;
 }
 
 /* Condition */
-.results-table:not(.select-mode) th:nth-child(5), .results-table:not(.select-mode) td:nth-child(5) {
+.results-table.select-mode th:nth-child(6),
+.results-table.select-mode td:nth-child(6) {
     width: 100px;
 }
 
 /* Price */
-.results-table:not(.select-mode) th:nth-child(6), .results-table:not(.select-mode) td:nth-child(6) {
+.results-table.select-mode th:nth-child(7),
+.results-table.select-mode td:nth-child(7) {
     width: 80px;
 }
 
 /* QTY */
-.results-table:not(.select-mode) th:nth-child(7), .results-table:not(.select-mode) td:nth-child(7) {
+.results-table.select-mode th:nth-child(8),
+.results-table.select-mode td:nth-child(8) {
     width: 120px;
 }
 
 /* Lead Time */
-.results-table:not(.select-mode) th:nth-child(8), .results-table:not(.select-mode) td:nth-child(8) {
+.results-table.select-mode th:nth-child(9),
+.results-table.select-mode td:nth-child(9) {
     width: 120px;
 }
 
 /* Warehouse */
-.results-table:not(.select-mode) th:nth-child(9), .results-table:not(.select-mode) td:nth-child(9) {
+.results-table.select-mode th:nth-child(10),
+.results-table.select-mode td:nth-child(10) {
     width: 180px;
 }
 
 /* Interchangeable */
-.results-table:not(.select-mode) th:nth-child(10), .results-table:not(.select-mode) td:nth-child(10) {
+.results-table.select-mode th:nth-child(11),
+.results-table.select-mode td:nth-child(11) {
     width: 200px;
 }
 
 /* Other Info */
 
 /* Row selection */
-.row-checkbox, .select-all-checkbox {
+.row-checkbox,
+.select-all-checkbox {
     width: 16px;
     height: 16px;
     cursor: pointer;
@@ -899,6 +923,7 @@ body {
     border-radius: 8px;
     padding: 1rem;
     background: #f8fafc;
+    position: relative;
 }
 
 .quotation-item-header {
@@ -918,6 +943,28 @@ body {
 .quotation-item-portal {
     font-size: 0.875rem;
     color: #64748b;
+}
+
+.quotation-item-remove {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: #fee2e2;
+    color: #991b1b;
+    border: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    font-weight: bold;
+}
+
+.quotation-item-remove:hover {
+    background: #fecaca;
 }
 
 .quotation-item-fields {
@@ -991,6 +1038,7 @@ body {
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -1001,6 +1049,7 @@ body {
         transform: translateY(-50px);
         opacity: 0;
     }
+
     to {
         transform: translateY(0);
         opacity: 1;

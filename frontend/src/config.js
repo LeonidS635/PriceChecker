@@ -19,7 +19,7 @@ const CONFIG = {
         NOTIFICATION_TIMEOUT: 5000,
 
         // Maximum cell text length before truncation
-        MAX_CELL_LENGTH: 200,
+        MAX_CELL_LENGTH: 50,
 
         // Search debounce delay (ms)
         SEARCH_DEBOUNCE: 300,
@@ -54,6 +54,7 @@ const CONFIG = {
         EXCEL_UPLOAD_SUCCESS: 'Excel file uploaded successfully',
         EXCEL_UPLOAD_ERROR: 'Failed to upload Excel file',
         EXCEL_DELETE_SUCCESS: 'Excel file deleted successfully',
+        EXCEL_DELETE_ERROR: 'Failed to delete Excel file',
         FATAL_ERROR: 'A critical error occurred. Please reload the application.',
         NO_PORTALS_SELECTED: 'Please select at least one portal',
         NO_LOGGED_IN_PORTALS: 'Please login to at least one portal before searching',
@@ -66,15 +67,15 @@ const CONFIG = {
 
     // Table columns configuration
     TABLE_COLUMNS: [
-        {key: 'portal', title: 'Portal', sortable: true},
-        {key: 'part_number', title: 'Part Number', sortable: true},
-        {key: 'description', title: 'Description', sortable: false},
-        {key: 'condition', title: 'Condition', sortable: true},
-        {key: 'price', title: 'Price', sortable: true},
-        {key: 'qty', title: 'QTY', sortable: true},
-        {key: 'lead_time', title: 'Lead Time', sortable: false},
-        {key: 'warehouse', title: 'Warehouse', sortable: false},
-        {key: 'interchangeable', title: 'Interchangeable', sortable: false},
-        {key: 'other_information', title: 'Other Information', sortable: false}
+        { key: 'portal', title: 'Portal', sortable: true },
+        { key: 'part_number', title: 'Part Number', sortable: true },
+        { key: 'description', title: 'Description', sortable: false },
+        { key: 'condition', title: 'Condition', sortable: true },
+        { key: 'price', title: 'Price', sortable: true },
+        { key: 'qty', title: 'QTY', sortable: true },
+        { key: 'lead_time', title: 'Lead Time', sortable: false },
+        { key: 'warehouse', title: 'Warehouse', sortable: false },
+        { key: 'interchangeable', title: 'Interchangeable', sortable: false },
+        { key: 'other_information', title: 'Other Information', sortable: false }
     ]
 };

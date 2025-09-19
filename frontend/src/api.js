@@ -15,7 +15,7 @@ class APIClient {
             },
         };
 
-        const config = {...defaultOptions, ...options};
+        const config = { ...defaultOptions, ...options };
 
         // Create AbortController for request cancellation
         const controller = new AbortController();
@@ -108,10 +108,10 @@ class APIClient {
     }
 
     // Logout from portals
-    async logout(portals) {
+    async logout(portalIds) {
         return this.request(CONFIG.ENDPOINTS.LOGOUT, {
             method: 'POST',
-            body: JSON.stringify({portal_ids: portals})
+            body: JSON.stringify({portal_ids: portalIds})
         }, 'logout');
     }
 
@@ -162,6 +162,13 @@ class APIClient {
             headers: {} // Remove Content-Type to let browser set it with boundary
         });
     }
+
+    // Delete Excel file
+    async deleteExcelFile(fileId) {
+        return this.request(`${CONFIG.ENDPOINTS.EXCEL}?id=${fileId}`, {
+            method: 'DELETE'
+        });
+    }
 }
 
 // API Error class
@@ -190,14 +197,14 @@ class StreamingResponseHandler {
 
         try {
             while (true) {
-                const {done, value} = await reader.read();
+                const { done, value } = await reader.read();
 
                 if (done) {
                     this.onComplete?.();
                     break;
                 }
 
-                const chunk = decoder.decode(value, {stream: true});
+                const chunk = decoder.decode(value, { stream: true });
                 const lines = chunk.split('\n');
 
                 for (const line of lines) {

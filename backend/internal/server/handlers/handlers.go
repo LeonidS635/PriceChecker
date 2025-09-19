@@ -10,6 +10,10 @@ type Handler struct {
 	resProcessor processor.ResultsProcessor
 }
 
-func NewHandler(ctx context.Context) Handler {
-	return Handler{resProcessor: processor.NewResultsProcessor(ctx)}
+func NewHandler(ctx context.Context) (Handler, error) {
+	p, err := processor.NewResultsProcessor(ctx)
+	if err != nil {
+		return Handler{}, err
+	}
+	return Handler{resProcessor: p}, nil
 }

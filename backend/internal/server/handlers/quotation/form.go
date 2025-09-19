@@ -434,31 +434,5 @@ func Form(req Request) *excelize.File {
 	f.SetCellValue(sheetName, fmt.Sprintf("F%d", totalStartRow+3), "Total If Paying By Bank Transfer")
 	f.SetCellValue(sheetName, fmt.Sprintf("G%d", totalStartRow+3), itemsTotal)
 
-	newSheet, _ := f.NewSheet("Sheet2")
-	newSheetName := f.GetSheetName(newSheet)
-
-	redTextStyle, _ := f.NewStyle(
-		&excelize.Style{
-			Font: &excelize.Font{
-				Family: "Calibri",
-				Size:   11,
-				Color:  "#FF0000",
-			},
-		},
-	)
-	f.SetCellStyle(newSheetName, "A1", "A1", redTextStyle)
-	f.SetCellValue(newSheetName, "A1", "Ship via: Freight Forwarder ( FREIGHT CHARGES WILL BE INVOICED SEPARATELY )")
-
-	plainTextStyle, _ := f.NewStyle(
-		&excelize.Style{
-			Font: &excelize.Font{
-				Family: "Calibri",
-				Size:   11,
-			},
-		},
-	)
-	f.SetCellStyle(newSheetName, "A2", "A2", plainTextStyle)
-	f.SetCellValue(newSheetName, "A2", "NOT CACHEABLE // NOT RETURNABLE")
-
 	return f
 }

@@ -5,21 +5,21 @@ import (
 )
 
 const (
-	PortalAerobay domain.PortalID = iota
-	PortalAeroSpareParts
-	PortalAircraftSpruce
-	PortalAirPowerInc
-	PortalAJWEventory
-	PortalAllAero
-	PortalBoeingShop
-	PortalDasi
-	PortalGlobalAviation
-	PortalLASAero
-	PortalProponent
-	PortalSatAir
-	PortalSCross
-	PortalSkySpares
-	PortalWencor
+	Aerobay domain.PortalID = iota
+	AeroSpareParts
+	AircraftSpruce
+	AirPowerInc
+	AJWEventory
+	AllAero
+	BoeingShop
+	Dasi
+	GlobalAviation
+	LASAero
+	Proponent
+	SatAir
+	SCross
+	SkySpares
+	Wencor
 )
 
 type Portal struct {
@@ -27,22 +27,22 @@ type Portal struct {
 	Name domain.PortalName `json:"name"`
 }
 
-var AllPortals = []Portal{
-	{ID: PortalAerobay, Name: "Aerobay"},
-	{ID: PortalAeroSpareParts, Name: "AeroSpareParts"},
-	{ID: PortalAircraftSpruce, Name: "AircraftSpruce"},
-	{ID: PortalAirPowerInc, Name: "AirPowerInc"},
-	{ID: PortalAJWEventory, Name: "AJWEventory"},
-	{ID: PortalAllAero, Name: "AllAero"},
-	{ID: PortalBoeingShop, Name: "BoeingShop"},
-	{ID: PortalDasi, Name: "Dasi"},
-	{ID: PortalGlobalAviation, Name: "GlobalAviation"},
-	{ID: PortalLASAero, Name: "LASAero"},
-	{ID: PortalProponent, Name: "Proponent"},
-	{ID: PortalSatAir, Name: "SatAir"},
-	{ID: PortalSCross, Name: "SCross"},
-	{ID: PortalSkySpares, Name: "SkySpares"},
-	{ID: PortalWencor, Name: "Wencor"},
+var All = []Portal{
+	{ID: Aerobay, Name: "Aerobay"},
+	{ID: AeroSpareParts, Name: "AeroSpareParts"},
+	{ID: AircraftSpruce, Name: "AircraftSpruce"},
+	{ID: AirPowerInc, Name: "AirPowerInc"},
+	{ID: AJWEventory, Name: "AJWEventory"},
+	{ID: AllAero, Name: "AllAero"},
+	{ID: BoeingShop, Name: "BoeingShop"},
+	{ID: Dasi, Name: "Dasi"},
+	{ID: GlobalAviation, Name: "GlobalAviation"},
+	{ID: LASAero, Name: "LASAero"},
+	{ID: Proponent, Name: "Proponent"},
+	{ID: SatAir, Name: "SatAir"},
+	{ID: SCross, Name: "SCross"},
+	{ID: SkySpares, Name: "SkySpares"},
+	{ID: Wencor, Name: "Wencor"},
 }
 
 var (
@@ -54,7 +54,7 @@ func init() {
 	IDByPortalName = make(map[domain.PortalName]domain.PortalID)
 	PortalNameByID = make(map[domain.PortalID]domain.PortalName)
 
-	for _, portal := range AllPortals {
+	for _, portal := range All {
 		IDByPortalName[portal.Name] = portal.ID
 		PortalNameByID[portal.ID] = portal.Name
 	}

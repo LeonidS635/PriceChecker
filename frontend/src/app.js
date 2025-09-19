@@ -7,7 +7,6 @@ class AppController {
         this.excelFiles = [];
         this.isSearching = false;
         this.isLoggingIn = false;
-        this.isLoggingOut = false;
     }
 
     // Initialize application
@@ -19,8 +18,7 @@ class AppController {
             // Load configuration from server
             await this.loadConfig();
 
-            // Load Excel files list
-            await this.loadExcelFiles();
+            // Don't load Excel files at startup
 
             console.log('Application initialized successfully');
         } catch (error) {
@@ -161,38 +159,22 @@ class AppController {
         }
     }
 
-    // Cancel login
-    cancelLogin() {
-        if (this.isLoggingIn) {
-            apiClient.cancelLogin();
-            this.isLoggingIn = false;
-            window.uiManager.setLoginButtonLoading(false);
-            window.uiManager.showLoginStatus('Login cancelled', 'info');
-        }
-    }
-
     // Perform logout
     async performLogout() {
-        if (this.isLoggingOut) {
-            console.log('Logout already in progress');
+        const selectedPortals = window.uiManager.getLogoutPortals();
+
+        if (selectedPortals.length === 0) {
+            window.uiManager.showLoginStatus('No logged in portals selected', 'error');
             return;
         }
 
-        const portals = window.uiManager.getLogoutPortals();
-
-        if (portals.length === 0) {
-            window.uiManager.showLoginStatus(CONFIG.MESSAGES.NO_PORTALS_SELECTED, 'error');
-            return;
-        }
-
-        this.isLoggingOut = true;
         window.uiManager.setLogoutButtonLoading(true);
         window.uiManager.showLoginStatus(CONFIG.MESSAGES.LOGOUT_PROCESSING, 'loading');
 
         try {
-            const response = await apiClient.logout(portals);
+            const response = await apiClient.logout(selectedPortals);
 
-            // Process login results
+            // Process logout results
             const successfulLogouts = [];
             const failedLogouts = [];
 
@@ -216,21 +198,20 @@ class AppController {
             });
 
             // Update logged in portals
-            const successfulLogoutsSet = new Set(successfulLogouts);
-            this.loggedInPortals = this.loggedInPortals.filter(portal => !successfulLogoutsSet.has(portal));
+            this.loggedInPortals = this.loggedInPortals.filter(id => !successfulLogouts.includes(id));
 
             // Update UI
             window.uiManager.updatePortalStatuses(this.loggedInPortals);
 
             // Show status message
-            if (successfulLogouts.length === portals.length) {
+            if (successfulLogouts.length === selectedPortals.length) {
                 window.uiManager.showLoginStatus(
                     `${CONFIG.MESSAGES.LOGOUT_SUCCESS}: ${successfulLogouts.length} portals`,
                     'success'
                 );
             } else {
                 window.uiManager.showLoginStatus(
-                    `Partial logout: ${successfulLogouts.length}/${portals.length} successful`,
+                    `Partial logout: ${successfulLogouts.length}/${selectedPortals.length} successful`,
                     'success'
                 );
             }
@@ -252,18 +233,7 @@ class AppController {
                 );
             }
         } finally {
-            this.isLoggingOut = false;
             window.uiManager.setLogoutButtonLoading(false);
-        }
-    }
-
-    // Cancel logout
-    cancelLogout() {
-        if (this.isLoggingOut) {
-            apiClient.cancelLogout();
-            this.isLoggingOut = false;
-            window.uiManager.setLoginButtonLoading(false);
-            window.uiManager.showLoginStatus('Logout cancelled', 'info');
         }
     }
 
@@ -407,15 +377,24 @@ class AppController {
 
             if (response.success) {
                 // Add new portal for the Excel file
-                const newPortal = {
+                const newFile = {
                     id: response.portal_id,
                     name: file.name
                 };
 
-                this.portals.push(newPortal);
-                this.excelFiles.push(newPortal);
+                // Add to Excel files list
+                this.excelFiles.push(newFile);
+
+                // Add to portals list
+                this.portals.push({
+                    id: response.portal_id,
+                    name: file.name
+                });
 
                 // Update UI
+                window.uiManager.addExcelFile(newFile);
+
+                // Update config display
                 window.uiManager.updateConfig({
                     portals: this.portals,
                     conditions: this.conditions
@@ -428,7 +407,7 @@ class AppController {
                     'info'
                 );
 
-                console.log('Excel file uploaded:', newPortal);
+                console.log('Excel file uploaded:', newFile);
             } else {
                 window.uiManager.addNotification(
                     `${CONFIG.MESSAGES.EXCEL_UPLOAD_ERROR}: ${response.error}`,
@@ -449,24 +428,48 @@ class AppController {
         }
     }
 
-    // Delete Excel file (local only)
-    deleteExcelFile(fileId) {
-        // Remove from local arrays
-        this.excelFiles = this.excelFiles.filter(f => f.id !== fileId);
-        this.portals = this.portals.filter(p => p.id !== fileId);
-        this.loggedInPortals = this.loggedInPortals.filter(id => id !== fileId);
+    // Cancel login
+    cancelLogin() {
+        if (this.isLoggingIn) {
+            apiClient.cancelLogin();
+            this.isLoggingIn = false;
+            window.uiManager.setLoginButtonLoading(false);
+            window.uiManager.showLoginStatus('Login cancelled', 'info');
+        }
+    }
 
-        // Update UI
-        window.uiManager.removeExcelFile(fileId);
+    // Delete Excel file
+    async deleteExcelFile(fileId) {
+        try {
+            await apiClient.deleteExcelFile(fileId);
 
-        window.uiManager.addNotification(
-            CONFIG.MESSAGES.EXCEL_DELETE_SUCCESS,
-            null,
-            null,
-            'info'
-        );
+            // Remove from local arrays
+            this.excelFiles = this.excelFiles.filter(f => f.id !== fileId);
+            this.portals = this.portals.filter(p => p.id !== fileId);
+            this.loggedInPortals = this.loggedInPortals.filter(id => id !== fileId);
 
-        console.log('Excel file deleted locally:', fileId);
+            // Update UI
+            window.uiManager.removeExcelFile(fileId);
+
+            window.uiManager.addNotification(
+                CONFIG.MESSAGES.EXCEL_DELETE_SUCCESS,
+                null,
+                null,
+                'info'
+            );
+
+            console.log('Excel file deleted:', fileId);
+
+        } catch (error) {
+            console.error('Excel file deletion error:', error);
+
+            window.uiManager.addNotification(
+                `${CONFIG.MESSAGES.EXCEL_DELETE_ERROR}: ${error.message}`,
+                null,
+                null,
+                'error'
+            );
+        }
     }
 
     // Handle fatal errors
@@ -555,7 +558,7 @@ window.debug = {
     getState: () => window.appController.getAppState(),
     reloadConfig: () => window.appController.reloadConfig(),
     clearNotifications: () => window.uiManager.clearAllNotifications(),
-    testSearch: (partNumbers = ['TEST123'], filters = {portal_ids: [1], conditions: [1]}) => {
+    testSearch: (partNumbers = ['TEST123'], filters = { portal_ids: [1], conditions: [1] }) => {
         // Set test data
         document.getElementById('partNumbersInput').value = partNumbers.join(', ');
         window.uiManager.currentFilters = filters;

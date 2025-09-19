@@ -14,8 +14,12 @@ type ResultsProcessor struct {
 	m manager.Manager
 }
 
-func NewResultsProcessor(ctx context.Context) ResultsProcessor {
-	return ResultsProcessor{m: manager.NewManager(ctx)}
+func NewResultsProcessor(ctx context.Context) (ResultsProcessor, error) {
+	m, err := manager.NewManager(ctx)
+	if err != nil {
+		return ResultsProcessor{}, err
+	}
+	return ResultsProcessor{m: m}, nil
 }
 
 func (rp ResultsProcessor) ProcessLogin(
@@ -38,6 +42,6 @@ func (rp ResultsProcessor) ProcessSearch(
 	return filteredResults
 }
 
-func (rp ResultsProcessor) ProcessAddingExcelFile(ctx context.Context, name string, content io.Reader) error {
-	return rp.m.AddExcelFile(ctx, name, content)
+func (rp ResultsProcessor) ProcessUploadingExcelFile(ctx context.Context, name string, content io.Reader) error {
+	return rp.m.UploadExcelFile(ctx, name, content)
 }

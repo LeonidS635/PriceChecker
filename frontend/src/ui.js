@@ -16,6 +16,7 @@ class UIManager {
         this.portals = [];
         this.conditions = [];
         this.excelFiles = [];
+        this.quotationCache = {}; // Cache quotation form data
     }
 
     // Initialize UI
@@ -30,25 +31,25 @@ class UIManager {
         document.getElementById('settingsBtn').addEventListener('click', () => this.showModal('settingsModal'));
         document.getElementById('portalManagementBtn').addEventListener('click', () => this.showPortalManagementModal());
         document.getElementById('excelManagementBtn').addEventListener('click', () => this.showExcelManagementModal());
-
+        
         // Search panel
         document.getElementById('filtersBtn').addEventListener('click', () => this.showFiltersModal());
         document.getElementById('searchBtn').addEventListener('click', () => this.startSearch());
         document.getElementById('cancelSearchBtn').addEventListener('click', () => this.cancelSearch());
-
+        
         // Export controls
         document.getElementById('selectModeBtn').addEventListener('click', () => this.toggleSelectMode());
         document.getElementById('quotationBtn').addEventListener('click', () => this.showQuotationModal());
-
+        
         // Error panel
         document.getElementById('errorToggleBtn').addEventListener('click', () => this.toggleErrorPanel());
         document.getElementById('closeErrorPanel').addEventListener('click', () => this.hideErrorPanel());
         document.getElementById('clearAllErrors').addEventListener('click', () => this.clearAllNotifications());
-
+        
         // Excel file upload
         document.getElementById('uploadExcelBtn').addEventListener('click', () => this.triggerFileUpload());
         document.getElementById('excelFileInput').addEventListener('change', (e) => this.handleFileUpload(e));
-
+        
         // Enter key in search input
         document.getElementById('partNumbersInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
@@ -102,13 +103,13 @@ class UIManager {
     updateConfig(config) {
         this.portals = config.portals || [];
         this.conditions = config.conditions || [];
-
+        
         // Set default filters to all portals and conditions
         this.currentFilters = {
             portal_ids: this.portals.map(p => p.id),
             conditions: this.conditions.map(c => c.id)
         };
-
+        
         this.updateFilterDisplays();
     }
 
@@ -122,14 +123,14 @@ class UIManager {
     updateFiltersModal() {
         const portalContainer = document.getElementById('portalFilters');
         const conditionContainer = document.getElementById('conditionFilters');
-
+        
         portalContainer.innerHTML = this.portals.map(portal => `
             <label class="checkbox-item">
                 <input type="checkbox" value="${portal.id}" ${this.currentFilters.portal_ids.includes(portal.id) ? 'checked' : ''}>
                 <span>${portal.name}</span>
             </label>
         `).join('');
-
+        
         conditionContainer.innerHTML = this.conditions.map(condition => `
             <label class="checkbox-item">
                 <input type="checkbox" value="${condition.id}" ${this.currentFilters.conditions.includes(condition.id) ? 'checked' : ''}>
@@ -148,15 +149,15 @@ class UIManager {
     applyFilters() {
         const selectedPortals = Array.from(document.querySelectorAll('#portalFilters input:checked'))
             .map(checkbox => parseInt(checkbox.value));
-
+        
         const selectedConditions = Array.from(document.querySelectorAll('#conditionFilters input:checked'))
             .map(checkbox => parseInt(checkbox.value));
-
+        
         this.currentFilters = {
             portal_ids: selectedPortals,
             conditions: selectedConditions
         };
-
+        
         this.closeModal('filtersModal');
         this.updateFilterButton();
         this.applyTableFilters();
@@ -167,7 +168,7 @@ class UIManager {
         const btn = document.getElementById('filtersBtn');
         const totalPortals = this.portals.length;
         const selectedPortals = this.currentFilters.portal_ids.length;
-
+        
         if (selectedPortals > 0 && selectedPortals < totalPortals) {
             btn.innerHTML = `<span class="icon">🔧</span> Filters (${selectedPortals})`;
             btn.classList.add('btn-primary');
@@ -187,7 +188,12 @@ class UIManager {
 
     updatePortalManagementModal() {
         const container = document.getElementById('portalLoginList');
-        container.innerHTML = this.portals.map(portal => {
+        // ИСКЛЮЧАЕМ Excel файлы из формы логина - только обычные порталы
+        const loginPortals = this.portals.filter(portal => 
+            !this.excelFiles.some(file => file.id === portal.id)
+        );
+        
+        container.innerHTML = loginPortals.map(portal => {
             const isLoggedIn = window.appState.loggedInPortals.includes(portal.id);
             return `
                 <div class="portal-login-item ${isLoggedIn ? 'logged-in' : ''}" data-portal-id="${portal.id}">
@@ -212,11 +218,11 @@ class UIManager {
             `;
         }).join('');
 
-        // Add event listeners for select/deselect all
+        // Add event listeners
         document.getElementById('selectAllPortalsBtn').addEventListener('click', () => {
             document.querySelectorAll('.portal-checkbox').forEach(cb => cb.checked = true);
         });
-
+        
         document.getElementById('deselectAllPortalsBtn').addEventListener('click', () => {
             document.querySelectorAll('.portal-checkbox').forEach(cb => cb.checked = false);
         });
@@ -226,7 +232,7 @@ class UIManager {
     getLoginCredentials() {
         const credentials = [];
         const selectedPortals = Array.from(document.querySelectorAll('.portal-checkbox:checked'));
-
+        
         selectedPortals.forEach(checkbox => {
             const portalId = parseInt(checkbox.value);
             const portalItem = checkbox.closest('.portal-login-item');
@@ -239,58 +245,43 @@ class UIManager {
                 password: password
             });
         });
-
+        
         return credentials;
     }
 
-    // Get logout portals from modal
+    // Get logout portals
     getLogoutPortals() {
-        const portals = [];
-        const selectedPortals = Array.from(document.querySelectorAll('.portal-checkbox:checked'));
-
-        selectedPortals.forEach(checkbox => {
-            const portalId = parseInt(checkbox.value);
-            portals.push(portalId);
-        });
-
-        return portals;
-    }
-
-    // Show login status
-    showLoginStatus(message, type) {
-        const statusDiv = document.getElementById('loginStatus');
-        statusDiv.innerHTML = `<div class="login-status ${type}">${message}</div>`;
-    }
-
-    // Set login button loading state
-    setLoginButtonLoading(loading) {
-        const loginBtn = document.getElementById('performLoginBtn');
-        const cancelBtn = document.getElementById('cancelLoginBtn');
-
-        loginBtn.disabled = loading;
-        loginBtn.style.display = loading ? 'none' : 'flex';
-        cancelBtn.style.display = loading ? 'flex' : 'none';
-
-        if (loading) {
-            loginBtn.innerHTML = '<span class="icon">⏳</span> Logging in...';
-        } else {
-            loginBtn.innerHTML = '<span class="icon">🔑</span> Login';
-        }
+        return Array.from(document.querySelectorAll('.portal-checkbox:checked'))
+            .map(checkbox => parseInt(checkbox.value))
+            .filter(portalId => window.appState.loggedInPortals.includes(portalId));
     }
 
     // Set logout button loading state
     setLogoutButtonLoading(loading) {
         const logoutBtn = document.getElementById('performLogoutBtn');
         const cancelBtn = document.getElementById('cancelLogoutBtn');
-
+        
         logoutBtn.disabled = loading;
-        logoutBtn.style.display = loading ? 'none' : 'flex';
-        cancelBtn.style.display = loading ? 'flex' : 'none';
-
         if (loading) {
             logoutBtn.innerHTML = '<span class="icon">⏳</span> Logging out...';
         } else {
-            logoutBtn.innerHTML = '<span class="icon">🔑</span> Logout';
+            logoutBtn.innerHTML = '<span class="icon">🚪</span> Logout';
+        }
+    }
+
+    // Set login button loading state
+    setLoginButtonLoading(loading) {
+        const loginBtn = document.getElementById('performLoginBtn');
+        const cancelBtn = document.getElementById('cancelLoginBtn');
+        
+        loginBtn.disabled = loading;
+        loginBtn.style.display = loading ? 'none' : 'flex';
+        cancelBtn.style.display = loading ? 'flex' : 'none';
+        
+        if (loading) {
+            loginBtn.innerHTML = '<span class="icon">⏳</span> Logging in...';
+        } else {
+            loginBtn.innerHTML = '<span class="icon">🔑</span> Login';
         }
     }
 
@@ -302,12 +293,12 @@ class UIManager {
 
     updateExcelFilesList() {
         const container = document.getElementById('excelFilesList');
-
+        
         if (this.excelFiles.length === 0) {
-            container.innerHTML = '<p class="no-files">No Excel files uploaded</p>';
+            container.innerHTML = '<p style="text-align: center; color: #64748b; padding: 2rem;">No Excel files uploaded</p>';
             return;
         }
-
+        
         container.innerHTML = this.excelFiles.map(file => `
             <div class="excel-file-item">
                 <span class="excel-file-name">${file.name}</span>
@@ -329,6 +320,12 @@ class UIManager {
         }
     }
 
+    // Show login status
+    showLoginStatus(message, type) {
+        const statusDiv = document.getElementById('loginStatus');
+        statusDiv.innerHTML = `<div class="login-status ${type}">${message}</div>`;
+    }
+
     deleteExcelFile(fileId) {
         window.appController.deleteExcelFile(fileId);
     }
@@ -346,9 +343,9 @@ class UIManager {
     getPartNumbers() {
         const input = document.getElementById('partNumbersInput');
         const text = input.value.trim();
-
+        
         if (!text) return [];
-
+        
         return text.split(/[,\s\n]+/)
             .map(num => num.trim())
             .filter(num => num.length > 0);
@@ -357,20 +354,20 @@ class UIManager {
     // Validate search form
     validateSearchForm() {
         const partNumbers = this.getPartNumbers();
-        const selectedPortals = this.currentFilters.portal_ids.filter(id =>
+        const selectedPortals = this.currentFilters.portal_ids.filter(id => 
             window.appState.loggedInPortals.includes(id)
         );
-
+        
         if (partNumbers.length === 0) {
             this.addNotification(CONFIG.MESSAGES.NO_PART_NUMBERS, null, null, 'warning');
             return false;
         }
-
+        
         if (selectedPortals.length === 0) {
             this.addNotification(CONFIG.MESSAGES.NO_LOGGED_IN_PORTALS, null, null, 'warning');
             return false;
         }
-
+        
         return true;
     }
 
@@ -378,16 +375,16 @@ class UIManager {
     showProgress(current, total) {
         this.processedCount = current;
         this.totalCount = total;
-
+        
         const container = document.getElementById('progressContainer');
         const progressText = document.getElementById('progressText');
         const progressStats = document.getElementById('progressStats');
         const progressFill = document.getElementById('progressFill');
-
+        
         container.style.display = 'block';
         progressText.textContent = 'Searching...';
         progressStats.textContent = `${current} of ${total}`;
-
+        
         const percentage = total > 0 ? (current / total) * 100 : 0;
         progressFill.style.width = `${percentage}%`;
     }
@@ -400,18 +397,18 @@ class UIManager {
     setSearchButtonLoading(loading) {
         const btn = document.getElementById('searchBtn');
         btn.disabled = loading;
-        btn.innerHTML = loading ?
-            '<span class="icon">⏳</span> Searching...' :
+        btn.innerHTML = loading ? 
+            '<span class="icon">⏳</span> Searching...' : 
             '<span class="icon">🔍</span> Search';
     }
 
     // Results table management
     initResultsTable() {
         const container = document.getElementById('resultsTable');
-
+        
         const tableClass = this.selectMode ? 'results-table select-mode' : 'results-table';
         const checkboxHeader = this.selectMode ? '<th><input type="checkbox" class="select-all-checkbox" id="selectAllCheckbox"></th>' : '';
-
+        
         container.innerHTML = `
             <table class="${tableClass}">
                 <thead>
@@ -424,14 +421,14 @@ class UIManager {
                 </tbody>
             </table>
         `;
-
+        
         // Add select all functionality
         if (this.selectMode) {
             document.getElementById('selectAllCheckbox').addEventListener('change', (e) => {
                 this.selectAllRows(e.target.checked);
             });
         }
-
+        
         this.searchResults = [];
         this.partGroups.clear();
         this.filteredResults = [];
@@ -442,14 +439,14 @@ class UIManager {
     // Add search result to table
     addSearchResult(result) {
         this.searchResults.push(result);
-
+        
         // Group by part number
         const partNumber = result.requested_part_number;
         if (!this.partGroups.has(partNumber)) {
             this.partGroups.set(partNumber, []);
         }
         this.partGroups.get(partNumber).push(result);
-
+        
         this.applyTableFilters();
     }
 
@@ -457,23 +454,23 @@ class UIManager {
     applyTableFilters() {
         // Filter each part group
         const filteredGroups = new Map();
-
+        
         for (const [partNumber, results] of this.partGroups) {
             const filteredResults = results.filter(result => {
                 return this.currentFilters.portal_ids.includes(result.portal_id) &&
-                    (result.condition_id === 0 || this.currentFilters.conditions.includes(result.condition_id));
+                       (result.condition_id === 0 || this.currentFilters.conditions.includes(result.condition_id));
             });
-
+            
             if (filteredResults.length > 0) {
                 filteredGroups.set(partNumber, filteredResults);
             }
         }
-
+        
         this.filteredResults = [];
         for (const results of filteredGroups.values()) {
             this.filteredResults.push(...results);
         }
-
+        
         this.updateTableDisplay(filteredGroups);
     }
 
@@ -481,26 +478,26 @@ class UIManager {
     updateTableDisplay(filteredGroups = null) {
         const tbody = document.getElementById('resultsTableBody');
         if (!tbody) return;
-
+        
         if (!filteredGroups) {
             // Rebuild filtered groups
             filteredGroups = new Map();
             for (const [partNumber, results] of this.partGroups) {
                 const filteredResults = results.filter(result => {
                     return this.currentFilters.portal_ids.includes(result.portal_id) &&
-                        (result.condition_id === 0 || this.currentFilters.conditions.includes(result.condition_id));
+                           (result.condition_id === 0 || this.currentFilters.conditions.includes(result.condition_id));
                 });
-
+                
                 if (filteredResults.length > 0) {
                     filteredGroups.set(partNumber, filteredResults);
                 }
             }
         }
-
+        
         let rowIndex = 0;
         const rows = [];
         const totalColumns = this.selectMode ? CONFIG.TABLE_COLUMNS.length + 1 : CONFIG.TABLE_COLUMNS.length;
-
+        
         for (const [partNumber, results] of filteredGroups) {
             // Add part separator
             rows.push(`
@@ -508,16 +505,16 @@ class UIManager {
                     <td colspan="${totalColumns}">${partNumber}</td>
                 </tr>
             `);
-
+            
             // Add part rows
             results.forEach(result => {
                 const portal = this.portals.find(p => p.id === result.portal_id);
                 const condition = this.conditions.find(c => c.id === result.condition_id);
                 const isSelected = this.selectedRows.has(rowIndex);
-
-                const checkboxCell = this.selectMode ?
+                
+                const checkboxCell = this.selectMode ? 
                     `<td><input type="checkbox" class="row-checkbox" data-index="${rowIndex}" ${isSelected ? 'checked' : ''}></td>` : '';
-
+                
                 rows.push(`
                     <tr class="${isSelected ? 'selected' : ''}">
                         ${checkboxCell}
@@ -533,13 +530,13 @@ class UIManager {
                         <td>${this.formatCellContent(result.other_information || '')}</td>
                     </tr>
                 `);
-
+                
                 rowIndex++;
             });
         }
-
+        
         tbody.innerHTML = rows.join('');
-
+        
         // Add event listeners for row checkboxes
         if (this.selectMode) {
             tbody.querySelectorAll('.row-checkbox').forEach(checkbox => {
@@ -548,7 +545,7 @@ class UIManager {
                 });
             });
         }
-
+        
         this.updateSelectAllCheckbox();
     }
 
@@ -556,7 +553,7 @@ class UIManager {
     formatCellContent(content) {
         if (!content) return '';
         const text = String(content);
-        return text.length > CONFIG.UI.MAX_CELL_LENGTH ?
+        return text.length > CONFIG.UI.MAX_CELL_LENGTH ? 
             text.substring(0, CONFIG.UI.MAX_CELL_LENGTH) + '...' : text;
     }
 
@@ -571,7 +568,7 @@ class UIManager {
         this.selectMode = !this.selectMode;
         const btn = document.getElementById('selectModeBtn');
         const quotationBtn = document.getElementById('quotationBtn');
-
+        
         if (this.selectMode) {
             btn.innerHTML = '<span class="icon">❌</span> Exit Select';
             quotationBtn.style.display = 'flex';
@@ -580,7 +577,7 @@ class UIManager {
             quotationBtn.style.display = 'none';
             this.selectedRows.clear();
         }
-
+        
         this.updateTableDisplay();
         this.updateSelectedCount();
     }
@@ -609,11 +606,11 @@ class UIManager {
     updateSelectAllCheckbox() {
         const checkbox = document.getElementById('selectAllCheckbox');
         if (!checkbox) return;
-
+        
         const visibleRowCount = this.filteredResults.length;
-        const selectedVisibleCount = this.filteredResults.filter((_, index) =>
+        const selectedVisibleCount = this.filteredResults.filter((_, index) => 
             this.selectedRows.has(index)).length;
-
+        
         if (selectedVisibleCount === 0) {
             checkbox.indeterminate = false;
             checkbox.checked = false;
@@ -639,50 +636,117 @@ class UIManager {
             this.addNotification(CONFIG.MESSAGES.NO_ROWS_SELECTED, null, null, 'warning');
             return;
         }
-
+        
+        this.loadQuotationCache();
         this.updateQuotationModal();
         this.showModal('quotationModal');
+    }
+
+    loadQuotationCache() {
+        // Load cached global fields
+        if (this.quotationCache.global) {
+            document.getElementById('quotationNumber').value = this.quotationCache.global.quotationNumber || '';
+            document.getElementById('logisticsCost').value = this.quotationCache.global.logisticsCost || 0;
+            document.getElementById('markup').value = this.quotationCache.global.markup || 1.0;
+            document.getElementById('incoterms').value = this.quotationCache.global.incoterms || '';
+            document.getElementById('paymentTerms').value = this.quotationCache.global.paymentTerms || '';
+        }
+    }
+
+    saveQuotationCache() {
+        // Save global fields
+        this.quotationCache.global = {
+            quotationNumber: document.getElementById('quotationNumber').value,
+            logisticsCost: document.getElementById('logisticsCost').value,
+            markup: document.getElementById('markup').value,
+            incoterms: document.getElementById('incoterms').value,
+            paymentTerms: document.getElementById('paymentTerms').value
+        };
+
+        // Save item fields
+        this.quotationCache.items = {};
+        document.querySelectorAll('.quotation-item').forEach(itemEl => {
+            const index = itemEl.dataset.index;
+            const originalIndex = Array.from(this.selectedRows)[parseInt(index)];
+            const result = this.filteredResults[originalIndex];
+            const cacheKey = `${result.portal_id}-${result.part_number}`;
+            
+            this.quotationCache.items[cacheKey] = {
+                description: itemEl.querySelector('[data-field="description"]').value,
+                condition: itemEl.querySelector('[data-field="condition"]').value,
+                price: itemEl.querySelector('[data-field="price"]').value,
+                lead_time: itemEl.querySelector('[data-field="lead_time"]').value,
+                qty: itemEl.querySelector('[data-field="qty"]').value
+            };
+        });
     }
 
     updateQuotationModal() {
         const container = document.getElementById('quotationItemsList');
         const selectedItems = Array.from(this.selectedRows).map(index => this.filteredResults[index]);
-
+        
         container.innerHTML = selectedItems.map((item, index) => {
             const portal = this.portals.find(p => p.id === item.portal_id);
             const condition = this.conditions.find(c => c.id === item.condition_id);
-
+            const cacheKey = `${item.portal_id}-${item.part_number}`;
+            const cached = this.quotationCache.items?.[cacheKey] || {};
+            
             return `
                 <div class="quotation-item" data-index="${index}">
                     <div class="quotation-item-header">
                         <span class="quotation-item-part">${item.part_number || 'N/A'}</span>
                         <span class="quotation-item-portal">${portal ? portal.name : 'Unknown'}</span>
                     </div>
+                    <button class="quotation-item-remove" onclick="window.uiManager.removeQuotationItem(${index})">×</button>
                     <div class="quotation-item-fields">
                         <div class="quotation-field-group">
                             <label>Description:</label>
-                            <input type="text" data-field="description" value="${item.description || ''}">
+                            <input type="text" data-field="description" value="${cached.description || item.description || ''}">
                         </div>
                         <div class="quotation-field-group">
                             <label>Condition:</label>
-                            <input type="text" data-field="condition" value="${condition && condition.id !== 0 ? condition.code : ''}">
+                            <input type="text" data-field="condition" value="${cached.condition || (condition && condition.id !== 0 ? condition.code : '')}">
                         </div>
                         <div class="quotation-field-group">
                             <label>Price ($):</label>
-                            <input type="number" step="0.01" data-field="price" value="${item.price || ''}">
+                            <input type="number" step="0.01" data-field="price" value="${cached.price || item.price || ''}">
                         </div>
                         <div class="quotation-field-group">
                             <label>Lead Time:</label>
-                            <input type="text" data-field="lead_time" value="${item.lead_time || ''}">
+                            <input type="text" data-field="lead_time" value="${cached.lead_time || item.lead_time || ''}">
                         </div>
                         <div class="quotation-field-group">
                             <label>Quantity:</label>
-                            <input type="number" data-field="qty" value="${item.qty || 1}">
+                            <input type="number" data-field="qty" value="${cached.qty || item.qty || 1}">
                         </div>
                     </div>
                 </div>
             `;
         }).join('');
+
+        // Add auto-save on input change
+        container.addEventListener('input', () => {
+            this.saveQuotationCache();
+        });
+    }
+
+    removeQuotationItem(itemIndex) {
+        const selectedIndices = Array.from(this.selectedRows);
+        const actualIndex = selectedIndices[itemIndex];
+        
+        // Remove from selection
+        this.selectedRows.delete(actualIndex);
+        this.updateSelectedCount();
+        this.updateTableDisplay();
+        
+        // Update modal if no items left
+        if (this.selectedRows.size === 0) {
+            this.closeModal('quotationModal');
+            return;
+        }
+        
+        // Refresh modal
+        this.updateQuotationModal();
     }
 
     getQuotationData() {
@@ -698,12 +762,15 @@ class UIManager {
         const logisticsCost = parseFloat(document.getElementById('logisticsCost').value) || 0;
         const markup = parseFloat(document.getElementById('markup').value) || 1.0;
 
+        // Save cache before getting data
+        this.saveQuotationCache();
+
         const offers = [];
         document.querySelectorAll('.quotation-item').forEach(itemEl => {
             const index = parseInt(itemEl.dataset.index);
-            const originalItem = Array.from(this.selectedRows)[index];
-            const result = this.filteredResults[originalItem];
-
+            const originalIndex = Array.from(this.selectedRows)[index];
+            const result = this.filteredResults[originalIndex];
+            
             const offer = {
                 portal_id: result.portal_id,
                 part_number: itemEl.querySelector('[class="quotation-item-part"]').value || result.part_number,
@@ -713,10 +780,10 @@ class UIManager {
                 lead_time: parseInt(itemEl.querySelector('[data-field="lead_time"]').value || result.lead_time),
                 qty: parseInt(itemEl.querySelector('[data-field="qty"]').value) || 1
             };
-
+            
             offers.push(offer);
         });
-
+        
         return {
             quotation_number: quotationNumber,
             payment_terms: paymentTerms,
@@ -730,7 +797,7 @@ class UIManager {
     // Notification management
     addNotification(message, portalId = null, partNumber = null, type = 'error') {
         const portal = portalId ? this.portals.find(p => p.id === portalId) : null;
-
+        
         const notification = {
             id: Date.now() + Math.random(),
             type: type,
@@ -739,17 +806,17 @@ class UIManager {
             partNumber: partNumber,
             timestamp: new Date()
         };
-
+        
         this.notifications.unshift(notification); // Add to beginning
-
+        
         // Limit notifications
         if (this.notifications.length > CONFIG.UI.MAX_NOTIFICATIONS) {
             this.notifications = this.notifications.slice(0, CONFIG.UI.MAX_NOTIFICATIONS);
         }
-
+        
         this.updateNotificationDisplay();
         this.updateErrorCounter();
-
+        
         // Don't auto-show panel anymore, just update counter
     }
 
@@ -783,10 +850,10 @@ class UIManager {
     updateErrorCounter() {
         const counter = document.getElementById('errorCount');
         const count = this.notifications.length;
-
+        
         counter.textContent = count;
         counter.classList.toggle('zero', count === 0);
-
+        
         // Don't auto-show panel, just update counter
     }
 
@@ -812,7 +879,7 @@ class UIManager {
     showFatalError(message) {
         const overlay = document.getElementById('fatalErrorOverlay');
         const messageEl = document.getElementById('fatalErrorMessage');
-
+        
         messageEl.textContent = message;
         overlay.style.display = 'block';
     }
@@ -828,7 +895,8 @@ class UIManager {
     // Update Excel files list
     updateExcelFiles(files) {
         this.excelFiles = files;
-
+        console.log('Excel files updated:', this.excelFiles); // Debug
+        
         // Add Excel files as portals
         files.forEach(file => {
             if (!this.portals.find(p => p.id === file.id)) {
@@ -838,9 +906,28 @@ class UIManager {
                 });
             }
         });
-
+        
         this.updateFilterDisplays();
+        
+        // Update Excel management modal if open
+        if (document.getElementById('excelManagementModal').classList.contains('show')) {
+            this.updateExcelFilesList();
+        }
+    }
 
+    // Add Excel file to list
+    addExcelFile(file) {
+        this.excelFiles.push(file);
+        console.log('Excel file added:', file); // Debug
+        
+        // Add as portal
+        this.portals.push({
+            id: file.id,
+            name: file.name
+        });
+        
+        this.updateFilterDisplays();
+        
         // Update Excel management modal if open
         if (document.getElementById('excelManagementModal').classList.contains('show')) {
             this.updateExcelFilesList();
@@ -851,17 +938,17 @@ class UIManager {
     removeExcelFile(fileId) {
         // Remove from Excel files
         this.excelFiles = this.excelFiles.filter(f => f.id !== fileId);
-
+        
         // Remove from portals
         this.portals = this.portals.filter(p => p.id !== fileId);
-
+        
         // Remove from filters
         this.currentFilters.portal_ids = this.currentFilters.portal_ids.filter(id => id !== fileId);
-
+        
         // Update displays
         this.updateFilterDisplays();
         this.updateFilterButton();
-
+        
         // Update Excel management modal if open
         if (document.getElementById('excelManagementModal').classList.contains('show')) {
             this.updateExcelFilesList();
@@ -874,7 +961,7 @@ class UIManager {
         this.hideProgress();
         this.selectedRows.clear();
         this.updateSelectedCount();
-
+        
         const partNumbers = this.getPartNumbers();
         this.showProgress(0, partNumbers.length);
     }
@@ -904,12 +991,12 @@ function performLogin() {
     window.appController.performLogin();
 }
 
-function performLogout() {
-    window.appController.performLogout();
-}
-
 function cancelLogin() {
     window.appController.cancelLogin();
+}
+
+function performLogout() {
+    window.appController.performLogout();
 }
 
 function formQuotation() {

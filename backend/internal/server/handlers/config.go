@@ -18,7 +18,7 @@ type (
 
 func (h Handler) GetConfig(w http.ResponseWriter, r *http.Request) {
 	resp := getPortalsResponse{
-		Portals:    portals.AllPortals,
+		Portals:    portals.All,
 		Conditions: conditions.Conditions,
 	}
 
