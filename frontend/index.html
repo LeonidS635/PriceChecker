@@ -4,260 +4,356 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aircraft Parts Comparison Service</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>AviParts - Aircraft Parts Comparison</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-    <div id="app">
-        <!-- Header with service name and controls -->
-        <header class="header">
-            <div class="header-left">
-                <h1>Aircraft Parts Comparison</h1>
-            </div>
-            <div class="header-right">
-                <button id="settingsBtn" class="btn btn-secondary">
-                    <span class="icon">⚙️</span>
-                    Settings
-                </button>
-                <button id="portalManagementBtn" class="btn btn-secondary">
-                    <span class="icon">🔗</span>
-                    Portal Management
-                </button>
-                <button id="excelManagementBtn" class="btn btn-secondary">
-                    <span class="icon">📁</span>
-                    Excel Files
-                </button>
-            </div>
-        </header>
-
-        <!-- Search panel -->
-        <div class="search-panel">
-            <div class="search-input-group">
-                <input type="text" id="partNumbersInput"
-                    placeholder="Enter part numbers (separated by commas, spaces, or line breaks)" class="search-input">
-                <button id="filtersBtn" class="btn btn-secondary">
-                    <span class="icon">🔧</span>
-                    Filters
-                </button>
-                <button id="searchBtn" class="btn btn-primary">
-                    <span class="icon">🔍</span>
-                    Search
-                </button>
-            </div>
-
-            <!-- Progress bar -->
-            <div id="progressContainer" class="progress-container" style="display: none;">
-                <div class="progress-info">
-                    <span id="progressText">Searching...</span>
-                    <span id="progressStats">0 of 0</span>
-                    <button id="cancelSearchBtn" class="btn btn-small btn-secondary">Cancel</button>
-                </div>
-                <div class="progress-bar">
-                    <div id="progressFill" class="progress-fill"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Results section -->
-        <div class="results-section">
-            <!-- Export button -->
-            <div class="export-controls">
-                <button id="quotationBtn" class="btn btn-secondary" style="display: none;">
-                    <span class="icon">📋</span>
-                    Form a Quotation (<span id="selectedCount">0</span>)
-                </button>
-                <button id="selectModeBtn" class="btn btn-secondary">
-                    <span class="icon">☑️</span>
-                    Select Mode
-                </button>
-            </div>
-
-            <!-- Results table -->
-            <div class="results-container">
-                <div id="resultsTable" class="results-table-container">
-                    <div class="no-results">
-                        <p>Enter part numbers and click "Search" to begin</p>
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                        </svg>
                     </div>
+                    <h1>AviParts</h1>
                 </div>
-            </div>
-        </div>
 
-        <!-- Error/notification panel trigger -->
-        <div id="errorPanelTrigger" class="error-panel-trigger">
-            <button id="errorToggleBtn" class="error-toggle-btn">
-                <span class="icon">⚠️</span>
-                <span id="errorCount" class="error-count">0</span>
-            </button>
-        </div>
+                <div class="search-section">
+                    <div class="search-box">
+                        <input type="text" id="partNumberInput" placeholder="Enter part numbers (comma separated)">
+                        <button id="searchButton">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                        </button>
+                    </div>
 
-        <!-- Error/notification panel (sidebar) -->
-        <div id="errorPanel" class="error-panel">
-            <div class="error-panel-header">
-                <h3>Notifications</h3>
-                <div class="error-panel-controls">
-                    <button id="clearAllErrors" class="btn btn-small">Clear All</button>
-                    <button id="closeErrorPanel" class="btn btn-small">×</button>
-                </div>
-            </div>
-            <div id="errorList" class="error-list"></div>
-        </div>
-    </div>
-
-    <!-- Modal Windows -->
-
-    <!-- Filters Modal -->
-    <div id="filtersModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Search Filters</h2>
-                <button class="close-btn" onclick="closeModal('filtersModal')">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="filter-section">
-                    <h3>Portals</h3>
-                    <div id="portalFilters" class="checkbox-group"></div>
-                </div>
-                <div class="filter-section">
-                    <h3>Conditions</h3>
-                    <div id="conditionFilters" class="checkbox-group"></div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('filtersModal')">Cancel</button>
-                <button class="btn btn-primary" onclick="applyFilters()">Apply</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Portal Management Modal -->
-    <div id="portalManagementModal" class="modal">
-        <div class="modal-content modal-large">
-            <div class="modal-header">
-                <h2>Portal Management</h2>
-                <button class="close-btn" onclick="closeModal('portalManagementModal')">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="portal-management-controls">
-                    <button id="selectAllPortalsBtn" class="btn btn-secondary btn-small">Select All</button>
-                    <button id="deselectAllPortalsBtn" class="btn btn-secondary btn-small">Deselect All</button>
-                </div>
-                <div id="portalLoginList" class="portal-login-list"></div>
-                <div id="loginStatus" class="login-status"></div>
-            </div>
-            <div class="modal-footer">
-                <button id="performLogoutBtn" class="btn btn-secondary" onclick="performLogout()">Logout</button>
-                <button id="performLoginBtn" class="btn btn-primary" onclick="performLogin()">Login</button>
-                <button id="cancelLoginBtn" class="btn btn-secondary" style="display: none;"
-                    onclick="cancelLogin()">Cancel Login</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Excel Management Modal -->
-    <div id="excelManagementModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Excel File Management</h2>
-                <button class="close-btn" onclick="closeModal('excelManagementModal')">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="excel-upload-section">
-                    <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display: none;">
-                    <button id="uploadExcelBtn" class="btn btn-primary">
-                        <span class="icon">📤</span>
-                        Upload Excel File
+                    <button class="btn btn-icon" id="filterButton">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="4" y1="21" x2="4" y2="14"></line>
+                            <line x1="4" y1="10" x2="4" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12" y2="3"></line>
+                            <line x1="20" y1="21" x2="20" y2="16"></line>
+                            <line x1="20" y1="12" x2="20" y2="3"></line>
+                            <line x1="1" y1="14" x2="7" y2="14"></line>
+                            <line x1="9" y1="8" x2="15" y2="8"></line>
+                            <line x1="17" y1="16" x2="23" y2="16"></line>
+                        </svg>
                     </button>
                 </div>
-                <div class="excel-files-section">
-                    <h3>Uploaded Files</h3>
-                    <div id="excelFilesList" class="excel-files-list"></div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-icon" id="settingsButton">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path
+                                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                            </path>
+                        </svg>
+                    </button>
+
+                    <button class="btn" id="portalsButton">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                            <line x1="8" y1="21" x2="16" y2="21"></line>
+                            <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
+                        Manage Portals
+                    </button>
+
+                    <button class="btn" id="excelButton">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <path d="M16 13H8"></path>
+                            <path d="M16 17H8"></path>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        Manage Excel
+                    </button>
+
+                    <div style="position: relative;">
+                        <button class="btn btn-icon" id="notificationButton">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                            </svg>
+                        </button>
+                        <div class="notification-badge" id="notificationBadge">0</div>
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('excelManagementModal')">Close</button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+        <div class="container">
+            <div class="results-header">
+                <h2 class="results-title">Search Results</h2>
+                <div class="results-actions">
+                    <button class="btn btn-primary" id="quotationButton">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        Form a Quotation<span id="selectedCountText"></span>
+                    </button>
+                </div>
             </div>
+
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar"></div>
+                <div class="progress-text" id="progressText"></div>
+            </div>
+
+            <div class="results-table-container">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th class="select-column">
+                                <input type="checkbox" id="selectAllCheckbox">
+                            </th>
+                            <th>Portal</th>
+                            <th>Part Number</th>
+                            <th>Description</th>
+                            <th>Condition</th>
+                            <th>Price</th>
+                            <th>QTY</th>
+                            <th>Lead Time</th>
+                            <th>Warehouse</th>
+                            <th>Interchangeable</th>
+                            <th>Other Information</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsTableBody">
+                        <tr>
+                            <td colspan="11" class="no-results">
+                                No search results yet. Enter part numbers to start searching.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Notification Panel -->
+    <div class="notification-panel" id="notificationPanel">
+        <div class="notification-header">
+            <h3 class="notification-title">Notifications</h3>
+            <div>
+                <button class="notification-close" id="closeNotificationPanel">&times;</button>
+            </div>
+        </div>
+        <div class="notification-list" id="notificationList">
+            <!-- Notifications will be added here dynamically -->
+        </div>
+        <div class="notification-footer">
+            <button class="btn btn-icon" id="clearAllNotifications" title="Clear all notifications">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                Clear All
+            </button>
         </div>
     </div>
 
-    <!-- Quotation Modal -->
-    <div id="quotationModal" class="modal">
-        <div class="modal-content modal-large">
+    <!-- Modals -->
+    <div class="modal-overlay" id="filterModal">
+        <div class="modal">
             <div class="modal-header">
-                <h2>Form a Quotation</h2>
-                <button class="close-btn" onclick="closeModal('quotationModal')">×</button>
+                <h3 class="modal-title">Filters</h3>
+                <button class="modal-close">&times;</button>
             </div>
-            <div class="modal-body">
-                <div class="quotation-number-section">
-                    <label for="quotationNumber">Quotation Number:</label>
-                    <input type="text" id="quotationNumber" class="quotation-number-input"
-                        placeholder="Enter quotation number">
-                </div>
+            <div class="modal-content">
+                <div class="filters-container">
+                    <div class="filter-column">
+                        <div class="filter-section">
+                            <div class="filter-section-header">
+                                <input type="checkbox" id="selectAllPortals" checked>
+                                <label for="selectAllPortals" class="filter-section-title">Portals</label>
+                            </div>
+                            <div id="portalsFilterList" class="filter-list">
+                                <!-- Portals filter options will be added here -->
+                            </div>
+                        </div>
+                    </div>
 
-            <div class="quotation-global-fields">
-                <div class="quotation-global-inputs">
-                    <div class="quotation-field-group">
-                        <label>Payment Terms:</label>
-                        <input type="text" id="paymentTerms" value="">
+                    <div class="filter-column">
+                        <div class="filter-section">
+                            <div class="filter-section-header">
+                                <input type="checkbox" id="selectAllConditions" checked>
+                                <label for="selectAllConditions" class="filter-section-title">Conditions</label>
+                            </div>
+                            <div id="conditionsFilterList" class="filter-list">
+                                <!-- Conditions filter options will be added here -->
+                            </div>
+                        </div>
                     </div>
-                    <div class="quotation-field-group">
-                        <label>Incoterms:</label>
-                        <input type="text" id="incoterms" value="DAP MOW">
-                    </div>
-                    <div class="quotation-field-group">
-                        <label>Logistics Price ($):</label>
-                        <input type="number" step="1" id="logisticsCost" value="0">
-                    </div>
-                    <div class="quotation-field-group">
-                        <label>Markup (%):</label>
-                        <input type="number" step="1" min="0" id="markup" value="0">
-                    </div>
-                </div>
-            </div>
-
-                <div class="quotation-items-section">
-                    <h3>Selected Items</h3>
-                    <div id="quotationItemsList" class="quotation-items-list"></div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('quotationModal')">Cancel</button>
-                <button id="formQuotationBtn" class="btn btn-primary" onclick="formQuotation()">Form a
-                    Quotation</button>
+                <button class="btn" id="resetFilters">Reset Filters</button>
+                <button class="btn btn-primary" id="applyFilters">Apply Filters</button>
             </div>
         </div>
     </div>
 
-    <!-- Settings Modal -->
-    <div id="settingsModal" class="modal">
-        <div class="modal-content">
+    <div class="modal-overlay" id="portalsModal">
+        <div class="modal">
             <div class="modal-header">
-                <h2>Settings</h2>
-                <button class="close-btn" onclick="closeModal('settingsModal')">×</button>
+                <h3 class="modal-title">Manage Portals</h3>
+                <button class="modal-close">&times;</button>
             </div>
-            <div class="modal-body">
-                <p>Settings will be added later</p>
+            <div class="modal-content">
+                <div class="portal-list" id="portalList">
+                    <!-- Regular portals will be added here dynamically (Excel files excluded) -->
+                </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('settingsModal')">Close</button>
+                <button class="btn" id="cancelLogin">Cancel</button>
+                <button class="btn btn-primary" id="loginAllPortals">Login to All</button>
+                <button class="btn btn-danger" id="logoutAllPortals">Logout All</button>
             </div>
         </div>
     </div>
 
-    <!-- Fatal Error Overlay -->
-    <div id="fatalErrorOverlay" class="fatal-error-overlay" style="display: none;">
-        <div class="fatal-error-content">
-            <h2>Critical Error</h2>
-            <p id="fatalErrorMessage"></p>
-            <button class="btn btn-primary" onclick="location.reload()">Reload Application</button>
+    <div class="modal-overlay" id="excelModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Manage Excel Files</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-content">
+                <div class="upload-section">
+                    <div class="upload-area" id="uploadArea">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <p>Drag and drop Excel file here or click to browse</p>
+                        <input type="file" id="excelUpload" accept=".xlsx, .xls">
+                    </div>
+                    <button class="btn btn-primary" id="uploadExcelBtn">Upload File</button>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Uploaded Files</label>
+                    <div class="file-list" id="excelList">
+                        <!-- Excel files will be added here dynamically -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" id="closeExcelModal">Close</button>
+            </div>
         </div>
     </div>
 
-    <!-- Scripts -->
-    <script src="src/config.js"></script>
-    <script src="src/api.js"></script>
-    <script src="src/ui.js"></script>
-    <script src="src/app.js"></script>
+    <div class="modal-overlay" id="quotationModal">
+        <div class="modal large-modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Form a Quotation</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-content">
+                <div class="form-group">
+                    <label class="form-label">Quotation Number *</label>
+                    <input type="text" class="form-input" id="quotationNumber" placeholder="Enter quotation number"
+                        required>
+                </div>
+
+                <div class="global-fields">
+                    <div class="form-group">
+                        <label class="form-label">Logistics Cost ($)</label>
+                        <input type="number" class="form-input" id="logisticsCost" placeholder="0.00" step="0.01"
+                            min="0" value="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Markup (%)</label>
+                        <input type="number" class="form-input" id="markup" placeholder="0" step="0.1" min="0"
+                            value="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Incoterms</label>
+                        <input type="text" class="form-input" id="incoterms" placeholder="DAP">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Payment Terms</label>
+                        <input type="text" class="form-input" id="paymentTerms" placeholder="100%">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Selected Items (<span id="quotationItemCount">0</span>)</label>
+                    <div class="quotation-items-container">
+                        <table class="quotation-items-table">
+                            <thead>
+                                <tr>
+                                    <th>Part Number</th>
+                                    <th>Description</th>
+                                    <th>QTY</th>
+                                    <th>Condition</th>
+                                    <th>Price</th>
+                                    <th>Lead Time</th>
+                                    <th width="50">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="quotationItems">
+                                <!-- Quotation items will be added here dynamically -->
+                            </tbody>
+                        </table>
+                        <div id="noQuotationItems" class="no-items">No items selected</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" id="cancelQuotation">Cancel</button>
+                <button class="btn btn-primary" id="generateQuotation">Generate Quotation</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Critical Error Modal -->
+    <div class="critical-error" id="criticalError" style="display: none;">
+        <div class="critical-error-content">
+            <h3 class="critical-error-title">Critical Error</h3>
+            <p class="critical-error-message" id="criticalErrorMessage">
+                A critical error has occurred. The application cannot continue. Please reload the page to try again.
+            </p>
+            <button class="btn btn-primary" id="reloadButton">Reload Page</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
 </body>
 
 </html>
