@@ -22,6 +22,7 @@ let currentQuotationData = {
     items: {}
 };
 let portalsInProgress = new Set();
+let allSearchResults = [];
 
 // DOM Elements
 const searchButton = document.getElementById('searchButton');
@@ -296,6 +297,7 @@ async function performSearch() {
     // Clear previous results
     resultsTableBody.innerHTML = '';
     displayedPartNumbers.clear();
+    allSearchResults = [];
 
     // Reset and show progress
     totalPartsToSearch = partNumbers.length;
@@ -397,6 +399,9 @@ async function performSearch() {
 function processSearchResult(result) {
     processedParts++;
     updateProgressBar();
+
+    // Store all results for client-side filtering
+    allSearchResults.push(...result);
 
     for (const portalResult of result) {
         const partNumber = portalResult.requested_part_number;
@@ -1252,8 +1257,71 @@ function updateSelectAllFilterCheckboxes() {
 
 // Apply table filters
 function applyTableFilters() {
+    const selectedPortals = Array.from(document.querySelectorAll('#portalsFilterList input:checked'))
+        .map(input => parseInt(input.value));
+
+    const selectedConditions = Array.from(document.querySelectorAll('#conditionsFilterList input:checked'))
+        .map(input => parseInt(input.value));
+
+    // If we have search results, filter them client-side
+    if (allSearchResults.length > 0) {
+        filterExistingResults(selectedPortals, selectedConditions);
+    }
+
     addNotification('info', 'Filter', '', 'Filters applied');
     toggleModal(filterModal);
+}
+
+// Filter existing results
+function filterExistingResults(selectedPortals, selectedConditions) {
+    // Clear current display
+    resultsTableBody.innerHTML = '';
+    displayedPartNumbers.clear();
+    selectedRows.clear();
+    updateSelectionCount();
+
+    let hasResults = false;
+
+    // Filter and display results
+    if (selectedPortals.length > 0 && selectedConditions.length > 0) {
+        allSearchResults.forEach(portalResult => {
+            const partNumber = portalResult.requested_part_number;
+
+            if (portalResult.success && portalResult.offers && portalResult.offers.length > 0) {
+                // Check if portal is selected
+                if (!selectedPortals.includes(portalResult.portal_id)) {
+                    return; // Skip this portal
+                }
+
+                // Filter offers by condition
+                const filteredOffers = portalResult.offers.filter(offer => {
+                    return selectedConditions.includes(offer.condition_id);
+                });
+
+                if (filteredOffers.length > 0) {
+                    hasResults = true;
+
+                    // Add part number divider if not already displayed
+                    if (!displayedPartNumbers.has(partNumber)) {
+                        addPartNumberDivider(partNumber);
+                        displayedPartNumbers.add(partNumber);
+                    }
+
+                    // Add filtered offers
+                    filteredOffers.forEach(offer => {
+                        addTableRow(offer, portalResult.portal_id);
+                    });
+                }
+            }
+        });
+    }
+
+    // Show no results message if needed
+    if (!hasResults) {
+        const noResultsRow = document.createElement('tr');
+        noResultsRow.innerHTML = '<td colspan="11" class="no-results">No results match the selected filters</td>';
+        resultsTableBody.appendChild(noResultsRow);
+    }
 }
 
 // Reset table filters
@@ -1266,6 +1334,15 @@ function resetTableFilters() {
     selectAllPortals.indeterminate = false;
     selectAllConditions.checked = true;
     selectAllConditions.indeterminate = false;
+
+    const allPortals = Array.from(document.querySelectorAll('#portalsFilterList input'))
+        .map(input => parseInt(input.value));
+    const allConditions = Array.from(document.querySelectorAll('#conditionsFilterList input'))
+        .map(input => parseInt(input.value));
+
+    if (allSearchResults.length > 0) {
+        filterExistingResults(allPortals, allConditions);
+    }
 
     addNotification('info', 'Filter', '', 'Filters reset');
 }
