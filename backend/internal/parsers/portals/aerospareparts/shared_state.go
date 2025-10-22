@@ -1,8 +1,6 @@
 package aerospareparts
 
 import (
-	"sync"
-
 	"github.com/LeonidS635/PriceChecker/backend/internal/dto"
 )
 
@@ -16,7 +14,6 @@ func newLoginSharedState() *loginSharedState {
 }
 
 type searchSharedState struct {
-	mu     sync.Mutex
 	offers []dto.Offer
 	err    error
 

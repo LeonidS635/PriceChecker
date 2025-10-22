@@ -284,14 +284,17 @@ async function performSearch() {
     // Get selected portals and conditions from filters
     const selectedPortals = Array.from(document.querySelectorAll('#portalsFilterList input:checked'))
         .map(input => parseInt(input.value));
+    
+    // Filter only logged in portals
+    const loggedInSelectedPortals = selectedPortals.filter(portalId => loggedInPortals.has(portalId));
 
     const selectedConditions = Array.from(document.querySelectorAll('#conditionsFilterList input:checked'))
         .map(input => parseInt(input.value));
 
     // Prepare filters
     const filters = {
-        portal_ids: selectedPortals.length > 0 ? selectedPortals : Array.from(loggedInPortals),
-        conditions: selectedConditions.length > 0 ? selectedConditions : conditions.map(c => c.id)
+        portal_ids: loggedInSelectedPortals,
+        conditions: selectedConditions
     };
 
     // Clear previous results
@@ -401,34 +404,42 @@ function processSearchResult(result) {
     updateProgressBar();
 
     // Store all results for client-side filtering
-    allSearchResults.push(...result);
-
-    for (const portalResult of result) {
-        const partNumber = portalResult.requested_part_number;
-
+    allSearchResults.push(result);
+    
+    let atLeastOneSuccess = false;
+    for (const portalResult of result.offers_statuses) {
         if (portalResult.success) {
-            if (portalResult.offers && portalResult.offers.length > 0) {
-                // Add part number divider if not already displayed
-                if (!displayedPartNumbers.has(partNumber)) {
-                    addPartNumberDivider(partNumber);
-                    displayedPartNumbers.add(partNumber);
-                }
+            atLeastOneSuccess = true;
+            break;
+        }
+    }
 
-                // Add offers for this part number
-                portalResult.offers.forEach(offer => {
-                    addTableRow(offer, portalResult.portal_id);
-                });
+    if (atLeastOneSuccess) {
+        const partNumber = result.requested_part_number;
+
+        // Add part number divider
+        addPartNumberDivider(partNumber);
+        displayedPartNumbers.add(partNumber);
+
+        for (const portalResult of result.offers_statuses) {
+            if (portalResult.success) {
+                if (portalResult.offers && portalResult.offers.length > 0) {
+                    // Add offers for this part number
+                    portalResult.offers.forEach(offer => {
+                        addTableRow(offer, portalResult.portal_id);
+                    });
+                } else {
+                    addNotification('info', getPortalName(portalResult.portal_id), partNumber, 'No offers found');
+                }
             } else {
-                addNotification('info', getPortalName(portalResult.portal_id), partNumber, 'No offers found');
+                addNotification('error', getPortalName(portalResult.portal_id), partNumber, portalResult.error || 'Unknown error');
             }
-        } else {
-            addNotification('error', getPortalName(portalResult.portal_id), partNumber, portalResult.error || 'Unknown error');
         }
     }
 
     // Remove "searching" message if we have results
     const searchingMsg = resultsTableBody.querySelector('.no-results');
-    if (searchingMsg && displayedPartNumbers.size > 0) {
+    if (searchingMsg && atLeastOneSuccess) {
         searchingMsg.remove();
     }
 }
@@ -453,6 +464,12 @@ function updateProgressBar() {
     }
 }
 
+// Format price with thousands separators
+function formatPrice(price) {
+    if (!price && price !== 0) return '';
+    return `$${price.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0')}`;
+}
+
 // Add row to results table
 function addTableRow(offer, portalId) {
     const row = document.createElement('tr');
@@ -465,9 +482,9 @@ function addTableRow(offer, portalId) {
 
     const interchangeable = offer.interchangeable && offer.interchangeable.length
         ? offer.interchangeable.join(', ')
-        : 'None';
+        : '';
 
-    const price = offer.price ? `$${offer.price.toFixed(2)}` : '';
+    const price = offer.price ? formatPrice(offer.price) : '';
 
     row.innerHTML = `
         <td class="select-column">
@@ -1284,33 +1301,45 @@ function filterExistingResults(selectedPortals, selectedConditions) {
 
     // Filter and display results
     if (selectedPortals.length > 0 && selectedConditions.length > 0) {
-        allSearchResults.forEach(portalResult => {
-            const partNumber = portalResult.requested_part_number;
-
-            if (portalResult.success && portalResult.offers && portalResult.offers.length > 0) {
-                // Check if portal is selected
-                if (!selectedPortals.includes(portalResult.portal_id)) {
-                    return; // Skip this portal
-                }
-
-                // Filter offers by condition
-                const filteredOffers = portalResult.offers.filter(offer => {
-                    return selectedConditions.includes(offer.condition_id);
-                });
-
-                if (filteredOffers.length > 0) {
-                    hasResults = true;
-
-                    // Add part number divider if not already displayed
-                    if (!displayedPartNumbers.has(partNumber)) {
-                        addPartNumberDivider(partNumber);
-                        displayedPartNumbers.add(partNumber);
+        allSearchResults.forEach(result => {
+            let atLeastOneSuccess = false;
+            for (const portalResult of result.offers_statuses) {
+                if (portalResult.success && portalResult.offers && portalResult.offers.length > 0) {
+                    if (selectedPortals.includes(portalResult.portal_id)) {
+                        atLeastOneSuccess = true;
+                        break;
                     }
+                }
+            }
 
-                    // Add filtered offers
-                    filteredOffers.forEach(offer => {
-                        addTableRow(offer, portalResult.portal_id);
-                    });
+            if (atLeastOneSuccess) {
+                const partNumber = result.requested_part_number;
+
+                // Add part number divider
+                addPartNumberDivider(partNumber);
+                displayedPartNumbers.add(partNumber);
+
+                for (const portalResult of result.offers_statuses) {
+                    if (portalResult.success && portalResult.offers && portalResult.offers.length > 0) {
+                        // Check if portal is selected
+                        if (!selectedPortals.includes(portalResult.portal_id)) {
+                            return; // Skip this portal
+                        }
+
+                        // Filter offers by condition
+                        const filteredOffers = portalResult.offers.filter(offer => {
+                            return selectedConditions.includes(offer.condition_id);
+                        });
+
+                        if (filteredOffers.length > 0) {
+                            hasResults = true;
+
+                            // Add filtered offers
+                            filteredOffers.forEach(offer => {
+                                addTableRow(offer, portalResult.portal_id);
+                            });
+                        }
+                    }
                 }
             }
         });

@@ -19,16 +19,17 @@ type (
 		PartNumbers []string   `json:"part_numbers"`
 		Filters     dto.Filter `json:"filters"`
 	}
-	searchResponse = []offersStatus
+	searchResponse = struct {
+		RequestedPartNumber string         `json:"requested_part_number"`
+		OffersStatuses      []offersStatus `json:"offers_statuses"`
+	}
 )
 
 type offersStatus = struct {
-	PortalID            domain.PortalID `json:"portal_id"`
-	RequestedPartNumber string          `json:"requested_part_number"`
-
-	Success bool        `json:"success"`
-	Offers  []dto.Offer `json:"offers,omitempty"`
-	Error   string      `json:"error,omitempty"`
+	PortalID domain.PortalID `json:"portal_id"`
+	Success  bool            `json:"success"`
+	Offers   []dto.Offer     `json:"offers,omitempty"`
+	Error    string          `json:"error,omitempty"`
 }
 
 func (h Handler) Search(w http.ResponseWriter, r *http.Request) {
@@ -53,6 +54,8 @@ func (h Handler) Search(w http.ResponseWriter, r *http.Request) {
 	mu := &sync.Mutex{}
 	wg := &sync.WaitGroup{}
 	for _, pn := range req.PartNumbers {
+		pn = strings.TrimSpace(pn)
+
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -63,21 +66,21 @@ func (h Handler) Search(w http.ResponseWriter, r *http.Request) {
 			searchResults := h.resProcessor.ProcessSearch(reqCtx, pn, req.Filters)
 
 			var resp searchResponse
+			resp.RequestedPartNumber = pn
 			for portalID, res := range searchResults {
 				status := offersStatus{
-					PortalID:            portalID,
-					RequestedPartNumber: pn,
-					Success:             res.Err == nil,
-					Offers:              res.Offers,
+					PortalID: portalID,
+					Success:  res.Err == nil,
+					Offers:   res.Offers,
 				}
 				if res.Err != nil {
 					status.Error = res.Err.Error()
 				}
-				resp = append(resp, status)
+				resp.OffersStatuses = append(resp.OffersStatuses, status)
 			}
 
 			slices.SortFunc(
-				resp, func(l, r offersStatus) int {
+				resp.OffersStatuses, func(l, r offersStatus) int {
 					lPortalName, rPortalName := portals.PortalNameByID[l.PortalID], portals.PortalNameByID[r.PortalID]
 					return strings.Compare(string(lPortalName), string(rPortalName))
 				},

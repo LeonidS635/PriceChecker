@@ -15,7 +15,6 @@ import (
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/boeingshop"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/dasi"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/excel"
-	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/globalaviation"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/lasaero"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/proponent"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals/satair"
@@ -35,7 +34,7 @@ var Spawners map[domain.PortalID]spawner
 
 var lastFreeID domain.PortalID // Temp: risk of overflow --> needed another system
 
-const defaultLimit = 4
+const defaultLimit = 25
 
 func init() {
 	path, _ := launcher.LookPath()
@@ -51,7 +50,6 @@ func init() {
 		portals.AllAero:        NewCollySpawner(allaero.NewAllAero, defaultLimit),
 		portals.BoeingShop:     NewCollySpawner(boeingshop.NewBoeingShop, defaultLimit),
 		portals.Dasi:           NewCollySpawner(dasi.NewDasi, defaultLimit),
-		portals.GlobalAviation: NewCollySpawner(globalaviation.NewGlobalAviation, 1),
 		portals.LASAero:        NewCollySpawner(lasaero.NewLASAero, defaultLimit),
 		portals.Proponent:      NewCollySpawner(proponent.NewProponent, 1),
 		portals.SatAir:         NewCollySpawner(satair.NewSatAir, defaultLimit),

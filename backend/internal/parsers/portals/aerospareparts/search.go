@@ -30,7 +30,7 @@ func (a AeroSpareParts) configureSearch() {
 	a.searchC.OnHTML(
 		"body", func(body *colly.HTMLElement) {
 			if partNumberEl := body.DOM.Find("span:contains(\"Part Number :\")"); partNumberEl.Length() > 0 {
-				a.searchState.baseOffer.PartNumber = partNumberEl.Next().Text()
+				a.searchState.baseOffer.PartNumber = strings.TrimSpace(partNumberEl.Next().Text())
 			}
 			if descriptionEl := body.DOM.Find("span:contains(\"Description :\")"); descriptionEl.Length() > 0 {
 				a.searchState.baseOffer.Description = descriptionEl.Next().Text()
