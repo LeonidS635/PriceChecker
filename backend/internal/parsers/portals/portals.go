@@ -13,7 +13,6 @@ const (
 	AllAero
 	BoeingShop
 	Dasi
-	GlobalAviation
 	LASAero
 	Proponent
 	SatAir
@@ -36,7 +35,6 @@ var All = []Portal{
 	{ID: AllAero, Name: "AllAero"},
 	{ID: BoeingShop, Name: "BoeingShop"},
 	{ID: Dasi, Name: "Dasi"},
-	{ID: GlobalAviation, Name: "GlobalAviation"},
 	{ID: LASAero, Name: "LASAero"},
 	{ID: Proponent, Name: "Proponent"},
 	{ID: SatAir, Name: "SatAir"},
