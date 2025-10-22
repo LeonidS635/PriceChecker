@@ -768,7 +768,7 @@ function getSelectedItemsForQuotation() {
                 description: cells[3].textContent,
                 qty: parseInt(cells[6].textContent) || 1,
                 condition: cells[4].textContent,
-                price: parseFloat(cells[5].textContent.replace('$', '')) || 0,
+                price: parseFloat(cells[5].textContent.replace(/[$\u00A0]/g, '')) || 0,
                 lead_time: cells[7].textContent
             });
         }
@@ -1305,9 +1305,12 @@ function filterExistingResults(selectedPortals, selectedConditions) {
             let atLeastOneSuccess = false;
             for (const portalResult of result.offers_statuses) {
                 if (portalResult.success && portalResult.offers && portalResult.offers.length > 0) {
-                    if (selectedPortals.includes(portalResult.portal_id)) {
+                    const filteredOffers = portalResult.offers.filter(offer => {
+                        return selectedConditions.includes(offer.condition_id);
+                    });
+
+                    if (selectedPortals.includes(portalResult.portal_id) && filteredOffers.length > 0) {
                         atLeastOneSuccess = true;
-                        break;
                     }
                 }
             }
@@ -1323,7 +1326,7 @@ function filterExistingResults(selectedPortals, selectedConditions) {
                     if (portalResult.success && portalResult.offers && portalResult.offers.length > 0) {
                         // Check if portal is selected
                         if (!selectedPortals.includes(portalResult.portal_id)) {
-                            return; // Skip this portal
+                            continue; // Skip this portal
                         }
 
                         // Filter offers by condition
