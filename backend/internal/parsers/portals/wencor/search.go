@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/LeonidS635/PriceChecker/backend/internal/dto"
+	"github.com/LeonidS635/PriceChecker/backend/internal/dto/conditions"
 	"github.com/gocolly/colly/v2"
 )
 
@@ -66,6 +67,7 @@ func (w Wencor) configureSearch() {
 
 			w.searchState.baseOffer.PartNumber = resp.PartNumber
 			w.searchState.baseOffer.Description = resp.Description
+			w.searchState.baseOffer.Condition = conditions.NE
 			w.searchState.baseOffer.Price = resp.Price.Gross
 			if len(resp.StockLevel) > 0 {
 				for _, stockLevel := range resp.StockLevel {

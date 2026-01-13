@@ -30,7 +30,7 @@ func (p Proponent) configureSearch() {
 	p.searchC.OnResponse(
 		func(r *colly.Response) {
 			type response []struct {
-				PartNumber  string `json:"Item_number"`
+				PartNumber  string `json:"Cust_part"`
 				Description string `json:"Item_description1"`
 				Price       string `json:"Price"`
 				PriceBreaks string `json:"Price_breaks"`

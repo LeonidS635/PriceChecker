@@ -1,3 +1,3 @@
 package scross
 
-const searchURL = "https://www.scross.com/store/part-number?%s"
+const searchURL = "https://www.scross.com/store/PN_index.php"
