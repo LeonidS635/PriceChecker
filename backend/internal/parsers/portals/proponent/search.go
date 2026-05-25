@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/LeonidS635/PriceChecker/backend/internal/dto"
 	"github.com/LeonidS635/PriceChecker/backend/internal/dto/conditions"
@@ -45,6 +47,8 @@ func (p Proponent) configureSearch() {
 			}
 			resp := response{}
 
+			log.Println("BODYx", r.Body)
+
 			if err := json.Unmarshal(r.Body, &resp); err != nil {
 				p.searchState.err = err
 				return
@@ -56,6 +60,8 @@ func (p Proponent) configureSearch() {
 			if len(resp) == 0 {
 				return
 			}
+
+			log.Println("SEARCH RESULT", resp)
 
 			var baseOffer dto.Offer
 			baseOffer.PartNumber = resp[0].PartNumber
@@ -123,6 +129,8 @@ func (p Proponent) configureSearch() {
 				return
 			}
 
+			log.Println("DETAILS", resp)
+
 			if details, ok := resp.Details[p.searchState.requestedPN]; ok {
 				div, err := goquery.NewDocumentFromReader(strings.NewReader(details))
 				if err != nil {
@@ -149,36 +157,50 @@ func (p Proponent) configureSearch() {
 func (p Proponent) Search(ctx context.Context, partNumber string) ([]dto.Offer, error) {
 	defer p.searchState.reset()
 
+	headers := http.Header{}
+	headers.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36")
+
 	p.searchState.requestedPN = strings.ToUpper(partNumber)
 
 	u, _ := url.Parse(partURL)
 	q := u.Query()
 	q.Set("id", strings.ToUpper(partNumber))
 	u.RawQuery = q.Encode()
-	if err := p.partC.Visit(u.String()); err != nil {
+	if err := p.partC.Request(http.MethodGet, u.String(), nil, nil, headers); err != nil {
+		log.Println("part err", err)
 		return nil, err
 	}
 
-	if err := p.searchC.Visit(searchURL); err != nil {
+	searchBody := map[string]string{
+		"nd":      strconv.FormatInt(time.Now().UnixMilli(), 10),
+		"page":    "1",
+		"rows":    "10",
+		"sidx":    "Item_site",
+		"sord":    "asc",
+		"_search": "false",
+	}
+	marshalledSearchBody, _ := json.Marshal(searchBody)
+	if err := p.searchC.Request(http.MethodPost, searchURL, bytes.NewReader(marshalledSearchBody), nil, headers); err != nil {
+		log.Println("search err", err)
 		return nil, err
 	}
 	if p.searchState.err != nil {
+		log.Println("search err", p.searchState.err)
 		return nil, p.searchState.err
 	}
 
-	headers := http.Header{}
-	headers.Set("Content-Type", "application/json")
-
-	body := struct {
-		PartIDs []string `json:"partIds"`
-	}{
-		PartIDs: []string{strings.ToUpper(partNumber)},
+	detailsBody := map[string]string{
+		"partIds": fmt.Sprintf("[%s]", strings.ToUpper(partNumber)),
 	}
-	marshalledBody, _ := json.Marshal(body)
-	if err := p.detailsC.Request(
-		http.MethodPost, detailsURL, bytes.NewReader(marshalledBody), nil, headers,
-	); err != nil {
+	marshalledDetailsBody, _ := json.Marshal(detailsBody)
+	if err := p.detailsC.Request(http.MethodPost, detailsURL, bytes.NewReader(marshalledDetailsBody), nil, headers); err != nil {
+		log.Println("details err", err)
 		return nil, err
 	}
+	if p.searchState.err != nil {
+		log.Println("details err", p.searchState.err)
+		return nil, p.searchState.err
+	}
+
 	return p.searchState.offers, p.searchState.err
 }

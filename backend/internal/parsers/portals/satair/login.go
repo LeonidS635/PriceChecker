@@ -44,7 +44,7 @@ func (s SatAir) Login(ctx context.Context, username string, password string) err
 	}
 
 	_ = s.addInfoC.SetCookies(addInfoURL, s.loginC.Cookies(loginURL))
-	_ = s.plantsC.SetCookies(plantsURL, s.loginC.Cookies(plantsURL))
+	_ = s.plantsC.SetCookies(plantsURL, s.loginC.Cookies(loginURL))
 
 	return nil
 }

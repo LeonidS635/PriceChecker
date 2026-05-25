@@ -2,23 +2,24 @@ package manager
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"sync"
 
 	"github.com/LeonidS635/PriceChecker/backend/internal/domain"
-	"github.com/LeonidS635/PriceChecker/backend/internal/dto"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/portals"
 )
 
-func (m Manager) Login(ctx context.Context, creds map[domain.PortalID]dto.Credentials) map[domain.PortalID]error {
-	errors := make(map[domain.PortalID]error, len(creds))
-	for portalID := range creds {
-		errors[portalID] = nil
+func (m Manager) Login(ctx context.Context, portalIDs []domain.PortalID) map[domain.PortalID]error {
+	loginErrors := make(map[domain.PortalID]error, len(portalIDs))
+	for _, portalID := range portalIDs {
+		loginErrors[portalID] = nil
 	}
 
 	mu := &sync.Mutex{}
 	wg := &sync.WaitGroup{}
-	for portalID, c := range creds {
+	for _, portalID := range portalIDs {
 		mu.Lock()
 		_, isLoggedIn := m.loggedInPortals[portalID]
 		mu.Unlock()
@@ -27,10 +28,15 @@ func (m Manager) Login(ctx context.Context, creds map[domain.PortalID]dto.Creden
 			continue
 		}
 
-		if savedC, ok := m.credentialsCache.Get(portalID); ok && (len(c.Username) == 0 && len(c.Password) == 0) {
-			c = savedC
-		} else {
-			m.credentialsCache.Save(portalID, c)
+		username, password, err := m.credentialsService.GetCredentials(ctx, 1, uint64(portalID))
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				if err := m.credentialsService.SetCredentials(ctx, 1, uint64(portalID), username, password); err != nil {
+					loginErrors[portalID] = fmt.Errorf("setting credentials: %w", err)
+				}
+			} else {
+				loginErrors[portalID] = fmt.Errorf("getting credentials: %w", err)
+			}
 		}
 
 		if w, ok := m.workers[portalID]; ok {
@@ -38,8 +44,8 @@ func (m Manager) Login(ctx context.Context, creds map[domain.PortalID]dto.Creden
 			go func() {
 				defer wg.Done()
 
-				if err := w.Login(ctx, c.Username, c.Password); err != nil {
-					errors[portalID] = fmt.Errorf("logining to %q: %w", portals.PortalNameByID[portalID], err)
+				if err := w.Login(ctx, username, password); err != nil {
+					loginErrors[portalID] = fmt.Errorf("logining to %q: %w", portals.PortalNameByID[portalID], err)
 					return
 				}
 
@@ -48,12 +54,10 @@ func (m Manager) Login(ctx context.Context, creds map[domain.PortalID]dto.Creden
 				mu.Unlock()
 			}()
 		} else {
-			errors[portalID] = fmt.Errorf("worker for %q not found", portals.PortalNameByID[portalID])
+			loginErrors[portalID] = fmt.Errorf("worker for %q not found", portals.PortalNameByID[portalID])
 		}
 	}
 	wg.Wait()
 
-	m.credentialsCache.DumpInFile()
-
-	return errors
+	return loginErrors
 }

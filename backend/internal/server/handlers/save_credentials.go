@@ -7,25 +7,21 @@ import (
 	"time"
 
 	"github.com/LeonidS635/PriceChecker/backend/internal/domain"
+	"github.com/LeonidS635/PriceChecker/backend/internal/dto"
 )
 
 type (
-	loginRequest = []struct {
+	saveCredentialsRequest = []struct {
 		PortalID domain.PortalID `json:"portal_id"`
+		dto.Credentials
 	}
-	loginResponse = []portalStatus
+	saveCredentialsResponse = []portalStatus
 )
 
-type portalStatus = struct {
-	PortalID domain.PortalID `json:"portal_id"`
-	Success  bool            `json:"success"`
-	Error    string          `json:"error,omitempty"`
-}
-
-func (h Handler) Login(w http.ResponseWriter, r *http.Request) {
+func (h Handler) SaveCredentials(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var req loginRequest
+	var req saveCredentialsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		MustEncodeErrorMsg(w, err, http.StatusBadRequest)
 		return
@@ -34,15 +30,14 @@ func (h Handler) Login(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	portalIDs := make([]domain.PortalID, len(req))
-	for i, r := range req {
-		portalIDs[i] = r.PortalID
+	creds := make(map[domain.PortalID]dto.Credentials, len(req))
+	for _, c := range req {
+		creds[c.PortalID] = c.Credentials
 	}
+	saveCredentialsResults := h.resProcessor.ProcessSaveCredentials(ctx, creds)
 
-	loginResults := h.resProcessor.ProcessLogin(ctx, portalIDs)
-
-	var resp loginResponse
-	for portalID, err := range loginResults {
+	var resp saveCredentialsResponse
+	for portalID, err := range saveCredentialsResults {
 		status := portalStatus{
 			PortalID: portalID,
 			Success:  err == nil,

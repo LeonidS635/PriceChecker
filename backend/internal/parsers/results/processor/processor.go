@@ -22,10 +22,12 @@ func NewResultsProcessor(ctx context.Context) (ResultsProcessor, error) {
 	return ResultsProcessor{m: m}, nil
 }
 
-func (rp ResultsProcessor) ProcessLogin(
-	ctx context.Context, creds map[domain.PortalID]dto.Credentials,
-) map[domain.PortalID]results.LoginResult {
-	return rp.m.Login(ctx, creds)
+func (rp ResultsProcessor) ProcessSaveCredentials(ctx context.Context, creds map[domain.PortalID]dto.Credentials) map[domain.PortalID]results.LoginResult {
+	return rp.m.SaveCredentials(ctx, creds)
+}
+
+func (rp ResultsProcessor) ProcessLogin(ctx context.Context, portalIDs []domain.PortalID) map[domain.PortalID]results.LoginResult {
+	return rp.m.Login(ctx, portalIDs)
 }
 
 func (rp ResultsProcessor) ProcessLogout(ctx context.Context, portalIDs []domain.PortalID) map[domain.PortalID]results.LoginResult {

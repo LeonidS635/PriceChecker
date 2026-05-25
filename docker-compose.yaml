@@ -1,17 +1,35 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: credentials_keeper
+    volumes:
+      - credentials_keeper_pg:/var/lib/postgresql/data
+      - ./backend/services/credentials-keeper/docker/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d credentials_keeper"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     ports:
       - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      CREDENTIALS_KEEPER_PG_DSN: postgres://postgres:postgres@postgres:5432/credentials_keeper
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
-    volumes:
-      - ./backend/credentials:/app/credentials
 
   frontend:
     build:
@@ -24,3 +42,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+volumes:
+  credentials_keeper_pg:

@@ -4,10 +4,10 @@ import (
 	"context"
 
 	"github.com/LeonidS635/PriceChecker/backend/internal/domain"
-	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/workflow/credentialscache"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/workflow/pool"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/workflow/spawners"
 	"github.com/LeonidS635/PriceChecker/backend/internal/parsers/workflow/worker"
+	credentialskeeper "github.com/LeonidS635/PriceChecker/backend/services/credentials-keeper/cmd/server"
 )
 
 type Manager struct {
@@ -16,7 +16,7 @@ type Manager struct {
 	workers         map[domain.PortalID]worker.Worker // TODO: sync.Map (?)
 	loggedInPortals map[domain.PortalID]struct{}
 
-	credentialsCache credentialscache.CredentialsCache
+	credentialsService *credentialskeeper.Server
 }
 
 func NewManager(ctx context.Context) (Manager, error) {
@@ -34,10 +34,15 @@ func NewManager(ctx context.Context) (Manager, error) {
 		workers[portalID] = w
 	}
 
+	credentialsService, err := credentialskeeper.NewServer()
+	if err != nil {
+		return Manager{}, err
+	}
+
 	return Manager{
-		baseCtx:          ctx,
-		workers:          workers,
-		loggedInPortals:  make(map[domain.PortalID]struct{}),
-		credentialsCache: credentialscache.NewCredentialsCache(),
+		baseCtx:            ctx,
+		workers:            workers,
+		loggedInPortals:    make(map[domain.PortalID]struct{}),
+		credentialsService: credentialsService,
 	}, nil
 }

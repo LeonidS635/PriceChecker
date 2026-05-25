@@ -71,7 +71,7 @@
                             <line x1="8" y1="21" x2="16" y2="21"></line>
                             <line x1="12" y1="17" x2="12" y2="21"></line>
                         </svg>
-                        Manage Portals
+                        Portal Login
                     </button>
 
                     <button class="btn" id="excelButton">
@@ -85,6 +85,14 @@
                         </svg>
                         Manage Excel
                     </button>
+
+                    <a href="credentials.html" class="btn btn-icon profile-button" title="Portal credentials">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                    </a>
 
                     <div style="position: relative;">
                         <button class="btn btn-icon" id="notificationButton">
@@ -225,17 +233,22 @@
     <div class="modal-overlay" id="portalsModal">
         <div class="modal">
             <div class="modal-header">
-                <h3 class="modal-title">Manage Portals</h3>
+                <h3 class="modal-title">Portal Login</h3>
                 <button class="modal-close">&times;</button>
             </div>
             <div class="modal-content">
-                <div class="portal-list" id="portalList">
-                    <!-- Regular portals will be added here dynamically (Excel files excluded) -->
+                <p class="modal-hint">Select portals to sign in. Credentials are configured on the <a href="credentials.html">credentials page</a>.</p>
+                <div class="portal-login-select-all filter-section-header">
+                    <input type="checkbox" id="selectAllLoginPortals" checked>
+                    <label for="selectAllLoginPortals" class="filter-section-title">Select all portals</label>
+                </div>
+                <div class="portal-list portal-login-list" id="portalList">
+                    <!-- Portals with checkboxes will be added here dynamically -->
                 </div>
             </div>
             <div class="modal-footer">
                 <button class="btn" id="cancelLogin">Cancel</button>
-                <button class="btn btn-primary" id="loginAllPortals">Login to All</button>
+                <button class="btn btn-primary" id="loginAllPortals">Login</button>
                 <button class="btn btn-danger" id="logoutAllPortals">Logout All</button>
             </div>
         </div>
@@ -353,6 +366,7 @@
         </div>
     </div>
 
+    <script src="common.js"></script>
     <script src="script.js"></script>
 </body>
 

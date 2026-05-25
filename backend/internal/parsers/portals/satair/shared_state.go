@@ -19,53 +19,57 @@ func newLoginSharedState() *loginSharedState {
 	return &loginSharedState{}
 }
 
+type (
+	mainProductInfo = struct {
+		ProductID       string `json:"id"`
+		PartNumber      string `json:"manufacturerAid"`
+		Description     string `json:"name"`
+		Condition       string `json:"state"`
+		Interchangeable []struct {
+			PartNumber string `json:"partNumber"`
+			CageCode   string `json:"cageCode"`
+		} `json:"satairInterchangeables"`
+	}
+
+	additionalProductInfo = struct {
+		ProductID string `json:"id"`
+		Details   struct {
+			InStock bool `json:"inStock"`
+			QTY     int  `json:"remainingOfferQuantity"`
+			Price   struct {
+				Value float32 `json:"value"`
+			} `json:"price"`
+			Availabilities []struct {
+				Date string `json:"availabilityDate"`
+			} `json:"productAvailabilities"`
+			Shop struct {
+				Location string `json:"locationDisplayName"`
+			} `json:"shop"`
+			Warehouse struct {
+				Name string `json:"name"`
+			} `json:"warehouse"`
+		} `json:"productAdditionalInfo"`
+	}
+
+	plantsInfo = struct {
+		ProductID string `json:"id"`
+		Plants    []struct {
+			InStock   bool `json:"inStock"`
+			QTY       int  `json:"quantity"`
+			Warehouse struct {
+				Name string `json:"name"`
+			} `json:"warehouse"`
+		} `json:"details"`
+	}
+)
+
 type searchSharedState struct {
 	offers []dto.Offer
 	err    error
 
-	offerResponse struct {
-		Products []struct {
-			ID              string `json:"id"`
-			PartNumber      string `json:"manufacturerAid"`
-			Description     string `json:"name"`
-			Condition       string `json:"state"`
-			Interchangeable []struct {
-				PartNumber string `json:"partNumber"`
-				CageCode   string `json:"cageCode"`
-			} `json:"satairInterchangeables"`
-		} `json:"offers"`
-	}
-	addInfoResponse struct {
-		ProductDetails []struct {
-			Details struct {
-				InStock bool `json:"inStock"`
-				QTY     int  `json:"remainingOfferQuantity"`
-				Price   struct {
-					Value float32 `json:"value"`
-				} `json:"price"`
-				Availabilities []struct {
-					Date string `json:"availabilityDate"`
-				} `json:"productAvailabilities"`
-				Shop struct {
-					Location string `json:"locationDisplayName"`
-				} `json:"shop"`
-				Warehouse struct {
-					Name string `json:"name"`
-				} `json:"warehouse"`
-			} `json:"productAdditionalInfo"`
-		} `json:"productEntries"`
-	}
-	plantsResponse struct {
-		Entries []struct {
-			Plants []struct {
-				InStock   bool `json:"inStock"`
-				QTY       int  `json:"quantity"`
-				Warehouse struct {
-					Name string `json:"name"`
-				} `json:"warehouse"`
-			} `json:"details"`
-		} `json:"entries"`
-	}
+	OfferResponse   []mainProductInfo       `json:"offers"`
+	AddInfoResponse []additionalProductInfo `json:"productEntries"`
+	PlantsResponse  []plantsInfo            `json:"entries"`
 }
 
 func newSearchSharedState() *searchSharedState {
@@ -76,7 +80,7 @@ func (s *searchSharedState) reset() {
 	s.offers = []dto.Offer{}
 	s.err = nil
 
-	s.offerResponse.Products = nil
-	s.addInfoResponse.ProductDetails = nil
-	s.plantsResponse.Entries = nil
+	s.OfferResponse = nil
+	s.AddInfoResponse = nil
+	s.PlantsResponse = nil
 }

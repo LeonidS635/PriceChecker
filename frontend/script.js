@@ -1,5 +1,3 @@
-// Configuration
-const API_BASE_URL = 'http://localhost:8081';
 let portals = [];
 let conditions = [];
 let loggedInPortals = new Set();
@@ -62,6 +60,7 @@ const noQuotationItems = document.getElementById('noQuotationItems');
 const quotationItems = document.getElementById('quotationItems');
 const selectAllPortals = document.getElementById('selectAllPortals');
 const selectAllConditions = document.getElementById('selectAllConditions');
+const selectAllLoginPortals = document.getElementById('selectAllLoginPortals');
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', init);
@@ -84,6 +83,12 @@ generateQuotation.addEventListener('click', generateQuotationHandler);
 cancelQuotation.addEventListener('click', () => toggleModal(quotationModal));
 selectAllPortals.addEventListener('change', toggleSelectAllPortals);
 selectAllConditions.addEventListener('change', toggleSelectAllConditions);
+selectAllLoginPortals.addEventListener('change', toggleSelectAllLoginPortals);
+document.getElementById('portalList').addEventListener('change', (e) => {
+    if (e.target.classList.contains('portal-login-checkbox')) {
+        updateSelectAllLoginPortalsState();
+    }
+});
 
 // Drag and drop for file upload
 uploadArea.addEventListener('dragover', (e) => {
@@ -777,70 +782,78 @@ function getSelectedItemsForQuotation() {
     return selectedItems;
 }
 
-// Render portals in manage portals modal (Excel files excluded)
+// Render portals in login modal (Excel files excluded)
 function renderPortals() {
     const portalList = document.getElementById('portalList');
     portalList.innerHTML = '';
 
-    // Only show regular portals (exclude Excel files)
     portals.forEach(portal => {
         const portalElement = document.createElement('div');
-        portalElement.className = 'portal-item';
+        portalElement.className = 'filter-option portal-login-option';
 
-        const buttonText = portalsInProgress.has(portal.id) ?
-            (loggedInPortals.has(portal.id) ? 'Logging out...' : 'Logging in...') :
-            (loggedInPortals.has(portal.id) ? 'Logout' : 'Login');
+        const isLoggedIn = loggedInPortals.has(portal.id);
+        const inProgress = portalsInProgress.has(portal.id);
+        let statusHtml = '';
 
-        const buttonClass = portalsInProgress.has(portal.id) ?
-            (loggedInPortals.has(portal.id) ? 'btn-logging-out' : 'btn-loading') :
-            (loggedInPortals.has(portal.id) ? 'btn-danger' : 'btn-primary');
+        if (inProgress) {
+            statusHtml = '<span class="portal-status-badge in-progress">Signing in…</span>';
+        } else if (isLoggedIn) {
+            statusHtml = '<span class="portal-status-badge logged-in">Signed in</span>';
+        }
 
         portalElement.innerHTML = `
-            <span class="portal-name">${portal.name}</span>
-            <div class="portal-form" data-portal-id="${portal.id}">
-                <input type="text" class="form-input username-input" placeholder="Username" id="username-${portal.id}" value="${localStorage.getItem(`username-${portal.id}`) || ''}">
-                <input type="password" class="form-input password-input" placeholder="Password" id="password-${portal.id}" value="${localStorage.getItem(`password-${portal.id}`) || ''}">
-                <button class="btn portal-login-btn ${buttonClass}" 
-                        data-portal-id="${portal.id}" ${portalsInProgress.has(portal.id) ? 'disabled' : ''}>
-                    ${buttonText}
-                </button>
-            </div>
+            <input type="checkbox" class="portal-login-checkbox" id="login-portal-${portal.id}"
+                data-portal-id="${portal.id}" checked ${inProgress ? 'disabled' : ''}>
+            <label for="login-portal-${portal.id}">
+                <span class="portal-login-label">${portal.name}</span>
+                ${statusHtml}
+            </label>
         `;
 
         portalList.appendChild(portalElement);
+    });
 
-        const loginButton = portalElement.querySelector('button');
-        loginButton.addEventListener('click', () => {
-            if (loggedInPortals.has(portal.id)) {
-                logoutPortal(portal.id);
-            } else {
-                loginPortal(portal.id);
-            }
-        });
+    updateSelectAllLoginPortalsState();
+}
 
-        const usernameInput = portalElement.querySelector('.username-input');
-        const passwordInput = portalElement.querySelector('.password-input');
+function getSelectedLoginPortalIds() {
+    return Array.from(document.querySelectorAll('.portal-login-checkbox:checked'))
+        .map(cb => parseInt(cb.dataset.portalId, 10));
+}
 
-        usernameInput.addEventListener('change', () => {
-            localStorage.setItem(`username-${portal.id}`, usernameInput.value);
-        });
-
-        passwordInput.addEventListener('change', () => {
-            localStorage.setItem(`password-${portal.id}`, passwordInput.value);
-        });
+function toggleSelectAllLoginPortals() {
+    const checked = selectAllLoginPortals.checked;
+    document.querySelectorAll('.portal-login-checkbox:not(:disabled)').forEach(cb => {
+        cb.checked = checked;
     });
 }
 
-// Login to a portal
-async function loginPortal(portalId) {
-    const username = document.getElementById(`username-${portalId}`).value;
-    const password = document.getElementById(`password-${portalId}`).value;
+function updateSelectAllLoginPortalsState() {
+    const checkboxes = document.querySelectorAll('.portal-login-checkbox:not(:disabled)');
+    if (checkboxes.length === 0) {
+        selectAllLoginPortals.checked = true;
+        selectAllLoginPortals.indeterminate = false;
+        return;
+    }
 
-    localStorage.setItem(`username-${portalId}`, username);
-    localStorage.setItem(`password-${portalId}`, password);
+    const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+    selectAllLoginPortals.checked = checkedCount === checkboxes.length;
+    selectAllLoginPortals.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+}
 
-    // Show loading state
-    portalsInProgress.add(portalId);
+// Login to selected portals
+async function loginToAllPortals() {
+    const portalIds = getSelectedLoginPortalIds()
+        .filter(id => !loggedInPortals.has(id));
+
+    if (portalIds.length === 0) {
+        addNotification('info', 'Login', '', 'No portals selected to sign in to');
+        return;
+    }
+
+    const payload = portalIds.map(portal_id => ({ portal_id }));
+
+    portalIds.forEach(id => portalsInProgress.add(id));
     renderPortals();
 
     try {
@@ -851,28 +864,12 @@ async function loginPortal(portalId) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify([{
-                portal_id: portalId,
-                username: username,
-                password: password
-            }]),
+            body: JSON.stringify(payload),
             signal: currentLoginController.signal
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            let errorMessage = `HTTP error! status: ${response.status}`;
-
-            try {
-                const errorData = JSON.parse(errorText);
-                errorMessage = errorData.error || errorMessage;
-            } catch (e) {
-                if (errorText) {
-                    errorMessage = `${errorMessage}: ${errorText}`;
-                }
-            }
-
-            throw new Error(errorMessage);
+            throw new Error(await parseErrorResponse(response));
         }
 
         const results = await response.json();
@@ -884,143 +881,13 @@ async function loginPortal(portalId) {
                 addNotification('error', getPortalName(result.portal_id), '', result.error || 'Login failed');
             }
         });
-
     } catch (error) {
         if (error.name !== 'AbortError') {
-            addNotification('error', getPortalName(portalId), '', error.message);
+            addNotification('error', 'Login', '', error.message);
         }
     } finally {
         currentLoginController = null;
-
-        portalsInProgress.delete(portalId);
-        renderPortals();
-    }
-}
-
-// Logout from a portal
-async function logoutPortal(portalId) {
-    // Show loading state
-    portalsInProgress.add(portalId);
-    renderPortals();
-
-    try {
-        currentLogoutController = new AbortController();
-
-        const response = await fetch(`${API_BASE_URL}/logout`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ portal_ids: [portalId] }),
-            signal: currentLogoutController.signal
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            let errorMessage = `HTTP error! status: ${response.status}`;
-
-            try {
-                const errorData = JSON.parse(errorText);
-                errorMessage = errorData.error || errorMessage;
-            } catch (e) {
-                if (errorText) {
-                    errorMessage = `${errorMessage}: ${errorText}`;
-                }
-            }
-
-            throw new Error(errorMessage);
-        }
-
-        const results = await response.json();
-        results.forEach(result => {
-            if (result.success) {
-                loggedInPortals.delete(result.portal_id);
-                addNotification('success', getPortalName(result.portal_id), '', 'Logout successful');
-            } else {
-                addNotification('error', getPortalName(result.portal_id), '', result.error || 'Logout failed');
-            }
-        });
-
-    } catch (error) {
-        if (error.name !== 'AbortError') {
-            addNotification('error', getPortalName(portalId), '', error.message);
-        }
-    } finally {
-        currentLogoutController = null;
-
-        portalsInProgress.delete(portalId);
-        renderPortals();
-    }
-}
-
-// Login to all portals
-async function loginToAllPortals() {
-    const credentials = [];
-
-    // Only login to regular portals (exclude Excel files)
-    portals.forEach(portal => {
-        if (!loggedInPortals.has(portal.id)) {
-            const username = document.getElementById(`username-${portal.id}`)?.value || '';
-            const password = document.getElementById(`password-${portal.id}`)?.value || '';
-
-            credentials.push({
-                portal_id: portal.id,
-                username: username,
-                password: password
-            });
-        }
-    });
-
-    if (credentials.length === 0) {
-        addNotification('info', 'Login', '', 'No portals to login to');
-        return;
-    }
-
-    credentials.forEach(creds => {
-        portalsInProgress.add(creds.portal_id)
-    })
-    renderPortals();
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(credentials)
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            let errorMessage = `HTTP error! status: ${response.status}`;
-
-            try {
-                const errorData = JSON.parse(errorText);
-                errorMessage = errorData.error || errorMessage;
-            } catch (e) {
-                if (errorText) {
-                    errorMessage = `${errorMessage}: ${errorText}`;
-                }
-            }
-
-            throw new Error(errorMessage);
-        }
-
-        const results = await response.json();
-        results.forEach(result => {
-            if (result.success) {
-                loggedInPortals.add(result.portal_id);
-                addNotification('success', getPortalName(result.portal_id), '', 'Login successful');
-            } else {
-                addNotification('error', getPortalName(result.portal_id), '', result.error || 'Login failed');
-            }
-        });
-    } catch (error) {
-        addNotification('error', 'Login', '', error.message);
-    } finally {
-        credentials.forEach(creds => {
-            portalsInProgress.delete(creds.portal_id)
-        })
+        portalIds.forEach(id => portalsInProgress.delete(id));
         renderPortals();
     }
 }

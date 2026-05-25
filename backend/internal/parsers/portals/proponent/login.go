@@ -67,7 +67,11 @@ func (p Proponent) configureLogin() {
 }
 
 func (p Proponent) Login(ctx context.Context, username string, password string) error {
-	if err := p.viewStateC.Visit(loginURL); err != nil {
+	headers := http.Header{}
+	headers.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+
+	if err := p.viewStateC.Request(
+		http.MethodGet, loginURL, nil, nil, headers); err != nil {
 		return err
 	}
 	if err := utils.PostIgnoringStatusCode(
@@ -84,6 +88,8 @@ func (p Proponent) Login(ctx context.Context, username string, password string) 
 	); err != nil {
 		return err
 	}
+
+	_ = p.searchC.SetCookies(searchURL, p.loginC.Cookies(loginURL))
 
 	return p.loginState.err
 }
