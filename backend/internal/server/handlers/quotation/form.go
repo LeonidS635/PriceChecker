@@ -1,14 +1,20 @@
 package quotation
 
 import (
+	"embed"
 	"fmt"
+	_ "image/png"
 	"math"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/xuri/excelize/v2"
 )
+
+// TODO: respect errors
+
+//go:embed assets/*
+var assets embed.FS
 
 type Request struct {
 	QuotationN int `json:"quotation_number"`
@@ -64,26 +70,34 @@ func Form(req Request) *excelize.File {
 	)
 	f.SetCellStyle(sheetName, "A1", "G6", headerBackgroundStyle)
 
-	imgPath, _ := filepath.Abs("internal/server/handlers/quotation/assets/header_left.png")
+	headerLeft, _ := assets.ReadFile("assets/header_left.png")
 	f.MergeCell(sheetName, "A1", "C6")
-	f.AddPicture(
-		sheetName, "A1", imgPath, &excelize.GraphicOptions{
-			AutoFit:         true,
-			LockAspectRatio: true,
-			OffsetX:         5,
-			OffsetY:         5,
+	f.AddPictureFromBytes(
+		sheetName, "A1", &excelize.Picture{
+			File:      headerLeft,
+			Extension: ".png",
+			Format: &excelize.GraphicOptions{
+				AutoFit:         true,
+				LockAspectRatio: true,
+				OffsetX:         5,
+				OffsetY:         5,
+			},
 		},
 	)
 
-	imgPath, _ = filepath.Abs("internal/server/handlers/quotation/assets/header_right.png")
+	headerRight, _ := assets.ReadFile("assets/header_right.png")
 	f.MergeCell(sheetName, "D1", "G6")
-	f.AddPicture(
-		sheetName, "E1", imgPath, &excelize.GraphicOptions{
-			ScaleY:          0.85,
-			AutoFit:         true,
-			LockAspectRatio: true,
-			OffsetX:         5,
-			OffsetY:         5,
+	f.AddPictureFromBytes(
+		sheetName, "E1", &excelize.Picture{
+			File:      headerRight,
+			Extension: ".png",
+			Format: &excelize.GraphicOptions{
+				ScaleY:          0.85,
+				AutoFit:         true,
+				LockAspectRatio: true,
+				OffsetX:         5,
+				OffsetY:         5,
+			},
 		},
 	)
 
