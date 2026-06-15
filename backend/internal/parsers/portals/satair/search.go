@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -78,6 +77,13 @@ func (s SatAir) formOffers(batch int) {
 		productsPlantsMap[product.ProductID] = product
 	}
 
+	// TODO: сделать заполнение оффера через методы
+	// 1. сделать возможность клонирования оффера (фабрика офферов)
+	// 2. сделать заполнение оффера через методы (может, например: если поле пустое, то заполнить его из другого источника, если нет, то оставить как есть)
+	// 3. сделать поле OtherInformation в виде map[string]string
+	//
+	// в общем переработать логику формирования оффера, чтобы было более гибко, удобно и читаемо
+
 	for i, j := 0, batch*batchSize; i < len(s.searchState.AddInfoResponse) && j < len(s.searchState.OfferResponse); i, j = i+1, j+1 {
 		productID := s.searchState.OfferResponse[j].ProductID
 
@@ -87,13 +93,17 @@ func (s SatAir) formOffers(batch int) {
 		offer.Condition = conditions.GetID(productsMap[productID].Condition)
 		offer.QTY = productsDetailsMap[productID].Details.QTY
 		offer.Price = productsDetailsMap[productID].Details.Price.Value
+
 		offer.Warehouse = productsDetailsMap[productID].Details.Warehouse.Name
 		if offer.Warehouse == "" {
 			offer.Warehouse = productsDetailsMap[productID].Details.Shop.Location
 		}
 		if !productsDetailsMap[productID].Details.InStock {
-			if len(productsDetailsMap[productID].Details.Availabilities) > 0 {
-				offer.LeadTime = productsDetailsMap[productID].Details.Availabilities[0].Date
+			if availabilities := productsDetailsMap[productID].Details.Availabilities; len(availabilities) > 0 {
+				offer.LeadTime = availabilities[0].Date
+				if availabilities[0].QTY > 1 {
+					offer.OtherInformation = fmt.Sprintf("MOQ: %d", availabilities[0].QTY)
+				}
 			}
 		}
 		for _, alt := range productsMap[productID].Interchangeable {
@@ -102,14 +112,15 @@ func (s SatAir) formOffers(batch int) {
 			)
 		}
 
-		log.Println("PLANTS FOR OFFER", offer, ":", productsPlantsMap[productID].Plants)
 		if len(productsPlantsMap[productID].Plants) == 0 {
 			s.searchState.offers = append(s.searchState.offers, offer)
 		} else {
 			for _, plant := range productsPlantsMap[productID].Plants {
 				newOffer := offer
 				newOffer.QTY = plant.QTY
-				newOffer.Warehouse = plant.Warehouse.Name
+				if newOffer.Warehouse == "" {
+					newOffer.Warehouse = plant.Warehouse.Name
+				}
 
 				s.searchState.offers = append(s.searchState.offers, newOffer)
 			}

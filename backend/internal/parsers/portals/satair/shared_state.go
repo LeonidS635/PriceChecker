@@ -38,9 +38,10 @@ type (
 			QTY     int  `json:"remainingOfferQuantity"`
 			Price   struct {
 				Value float32 `json:"value"`
-			} `json:"price"`
+			} `json:"basePrice"`
 			Availabilities []struct {
 				Date string `json:"availabilityDate"`
+				QTY  int    `json:"quantity"`
 			} `json:"productAvailabilities"`
 			Shop struct {
 				Location string `json:"locationDisplayName"`
