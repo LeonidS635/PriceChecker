@@ -1,0 +1,51 @@
+services:
+  rfq-viewer-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${RFQ_VIEWER_PG_USER}
+      POSTGRES_PASSWORD: ${RFQ_VIEWER_PG_PASSWORD}
+      POSTGRES_DB: ${RFQ_VIEWER_PG_DB}
+    ports:
+      - "5433:${RFQ_VIEWER_PG_PORT}"
+    volumes:
+      - rfq_viewer_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${RFQ_VIEWER_PG_USER} -d ${RFQ_VIEWER_PG_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    image: ghcr.io/kukymbr/goose-docker:3.24.2
+    depends_on:
+      rfq-viewer-db:
+        condition: service_healthy
+    environment:
+      GOOSE_DRIVER: postgres
+      GOOSE_DBSTRING: "host=rfq-viewer-db port=${RFQ_VIEWER_PG_PORT} user=${RFQ_VIEWER_PG_USER} password=${RFQ_VIEWER_PG_PASSWORD} dbname=${RFQ_VIEWER_PG_DB} sslmode=${RFQ_VIEWER_PG_SSLMODE}"
+      GOOSE_MIGRATION_DIR: /migrations
+    volumes:
+      - ./migrations:/migrations:ro
+
+  rfq-viewer:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    env_file:
+      - .env
+    depends_on:
+      rfq-viewer-db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  rfq_viewer_pg:
+
+networks:
+  default:
+    name: pricechecker
+    external: true

@@ -1,0 +1,7 @@
+boto3
+nats-py
+msal
+python-dotenv
+requests
+pytest
+

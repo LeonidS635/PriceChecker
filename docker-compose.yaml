@@ -1,5 +1,5 @@
 services:
-  postgres:
+  credentials-db:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: postgres
@@ -21,10 +21,10 @@ services:
     ports:
       - "8081:8081"
     depends_on:
-      postgres:
+      credentials-db:
         condition: service_healthy
     environment:
-      CREDENTIALS_KEEPER_PG_DSN: postgres://postgres:postgres@postgres:5432/credentials_keeper
+      CREDENTIALS_KEEPER_PG_DSN: postgres://postgres:postgres@credentials-db:5432/credentials_keeper
     logging:
       driver: "json-file"
       options:
@@ -45,3 +45,8 @@ services:
 
 volumes:
   credentials_keeper_pg:
+
+networks:
+  default:
+    name: pricechecker
+    external: true

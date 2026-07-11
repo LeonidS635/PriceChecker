@@ -1,4 +1,5 @@
 const API_BASE_URL = 'http://localhost:8081';
+const RFQ_VIEWER_API_BASE_URL = 'http://localhost:8082';
 
 function getStoredCredentials(portalId) {
     return {

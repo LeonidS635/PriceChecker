@@ -1,0 +1,14 @@
+boto3
+nats-py
+python-dotenv
+openai
+pydantic
+tenacity
+gliner
+python-docx
+openpyxl
+pdfminer.six
+pymupdf4llm
+beautifulsoup4
+markdownify
+pytest
