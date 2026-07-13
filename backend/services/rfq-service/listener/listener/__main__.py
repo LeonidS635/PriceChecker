@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 
 from listener.config import Settings
-from listener.mail.graph import GraphMailClient
+from listener.mail.imap import ImapMailClient
 from listener.pipeline import run
 from listener.publisher.nats import NATSPublisher
 from listener.storage.s3 import S3Storage
@@ -16,7 +16,7 @@ def main() -> None:
     settings = Settings.from_env()
     run(
         settings,
-        GraphMailClient(settings),
+        ImapMailClient(settings),
         S3Storage(settings),
         NATSPublisher(settings),
     )

@@ -4,7 +4,6 @@
 #   make help              — list targets
 #   make up                — start all stacks
 #   make down              — stop all stacks
-#   make connect-mailbox   — OAuth device flow for Outlook (one-off)
 
 DOCKER_COMPOSE ?= docker compose
 NETWORK        := pricechecker
@@ -28,8 +27,7 @@ DC_CRED    := $(DOCKER_COMPOSE) -f $(CRED_COMPOSE)
 	rfq-listener-up rfq-listener-down rfq-listener-logs \
 	rfq-extractor-up rfq-extractor-down rfq-extractor-logs \
 	rfq-infra-up rfq-infra-down \
-	viewer-up viewer-down viewer-logs viewer-migrate viewer-build \
-	connect-mailbox
+	viewer-up viewer-down viewer-logs viewer-migrate viewer-build
 
 help:
 	@echo "PriceChecker Docker targets:"
@@ -52,9 +50,6 @@ help:
 	@echo ""
 	@echo "  RFQ Viewer (PostgreSQL + migrations + API):"
 	@echo "    make viewer-up / viewer-down / viewer-logs / viewer-migrate"
-	@echo ""
-	@echo "  Mailbox OAuth (interactive, saves token to listener volume):"
-	@echo "    make connect-mailbox"
 
 # ---------------------------------------------------------------------------
 # Shared setup
@@ -149,10 +144,6 @@ rfq-extractor-down:
 
 rfq-extractor-logs:
 	$(DC_RFQ) logs -f rfq-extractor
-
-# Interactive OAuth device flow; token cache is persisted in rfq_listener_data volume.
-connect-mailbox: network env-check
-	$(DC_RFQ) run --rm -it --build rfq-listener python connect_mailbox.py
 
 # ---------------------------------------------------------------------------
 # RFQ Viewer

@@ -1,7 +1,6 @@
 boto3
 nats-py
-msal
+imapclient
 python-dotenv
 requests
 pytest
-

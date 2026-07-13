@@ -58,19 +58,6 @@ services:
       nats:
         condition: service_healthy
 
-  connect-mailbox:
-    profiles: ["tools"]
-    build:
-      context: ./listener
-      dockerfile: Dockerfile
-    env_file:
-      - ./listener/.env
-    volumes:
-      - rfq_listener_data:/data
-    stdin_open: true
-    tty: true
-    entrypoint: ["python", "connect_mailbox.py"]
-
 volumes:
   rfq_minio_data:
   rfq_listener_data:

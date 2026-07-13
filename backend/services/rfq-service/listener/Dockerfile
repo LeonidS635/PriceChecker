@@ -9,7 +9,6 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY listener ./listener
-COPY connect_mailbox.py .
 
 CMD ["python", "-m", "listener"]
 

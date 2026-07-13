@@ -40,10 +40,13 @@ class Settings:
     nats_stream: str
     nats_subject: str
 
-    graph_tenant_id: str
-    graph_client_id: str
-    graph_delta_link_path: str
-    graph_token_cache_path: str
+    imap_host: str
+    imap_port: int
+    imap_use_ssl: bool
+    imap_username: str
+    imap_password: str
+    imap_mailboxes: list[str]
+    imap_state_path: str
     poll_interval_seconds: int
 
     @classmethod
@@ -60,10 +63,12 @@ class Settings:
             nats_url=os.environ["RFQ_NATS_URL"],
             nats_stream=os.environ.get("RFQ_NATS_STREAM", "RFQ_EXTRACT"),
             nats_subject=os.environ.get("RFQ_NATS_SUBJECT", "rfq.extract.requests"),
-            graph_tenant_id=os.environ["RFQ_GRAPH_TENANT_ID"],
-            graph_client_id=os.environ["RFQ_GRAPH_CLIENT_ID"],
-            graph_delta_link_path=os.environ["RFQ_GRAPH_DELTA_LINK_PATH"],
-            graph_token_cache_path=os.environ["RFQ_GRAPH_TOKEN_CACHE_PATH"],
+            imap_host=os.environ["RFQ_IMAP_HOST"],
+            imap_port=int(os.environ.get("RFQ_IMAP_PORT", "993")),
+            imap_use_ssl=_parse_bool(os.environ.get("RFQ_IMAP_USE_SSL", "true")),
+            imap_username=os.environ["RFQ_IMAP_USERNAME"],
+            imap_password=os.environ["RFQ_IMAP_PASSWORD"],
+            imap_mailboxes=_split_csv(os.environ.get("RFQ_IMAP_MAILBOXES", "INBOX")),
+            imap_state_path=os.environ.get("RFQ_IMAP_STATE_PATH", "/data/imap_state.json"),
             poll_interval_seconds=int(os.environ["RFQ_POLL_INTERVAL_SECONDS"]),
         )
-

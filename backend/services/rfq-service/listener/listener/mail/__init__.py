@@ -1,4 +1,4 @@
 from .client import MailClient
-from .graph import GraphMailClient
+from .imap import ImapMailClient
 
-__all__ = ["MailClient", "GraphMailClient"]
+__all__ = ["MailClient", "ImapMailClient"]
