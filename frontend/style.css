@@ -1052,99 +1052,42 @@ main {
     color: #1e40af;
 }
 
-.letters-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.letter-item {
+.rfq-table-wrap {
+    max-height: min(70vh, 720px);
+    overflow: auto;
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    overflow: hidden;
     background: white;
 }
 
-.letter-row {
-    display: grid;
-    grid-template-columns: 24px minmax(0, 1fr) 180px 100px;
-    gap: 12px;
-    align-items: center;
-    padding: 14px 16px;
-    cursor: pointer;
-    user-select: none;
-}
-
-.letter-row:hover {
-    background: var(--light);
-}
-
-.letter-row.expanded {
-    background: #eff6ff;
-    border-bottom: 1px solid var(--border);
-}
-
-.letter-caret {
-    color: var(--secondary);
-    font-size: 0.85rem;
-}
-
-.letter-subject {
-    font-weight: 600;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.letter-time {
-    color: var(--secondary);
-    font-size: 0.9rem;
-    white-space: nowrap;
-}
-
-.letter-parts-count {
-    color: var(--secondary);
-    font-size: 0.9rem;
-    text-align: right;
-    white-space: nowrap;
-}
-
-.letter-details {
-    padding: 0 16px 16px;
-}
-
-.letter-details.hidden {
-    display: none;
-}
-
-.parts-table-container {
-    overflow-x: auto;
-}
-
-.parts-table {
+.rfq-table {
     width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
 }
 
-.parts-table col.col-part-number {
-    width: 18%;
+.rfq-table col.col-subject {
+    width: 26%;
 }
 
-.parts-table col.col-description {
-    width: 42%;
+.rfq-table col.col-part-number {
+    width: 16%;
 }
 
-.parts-table col.col-quantity {
-    width: 10%;
+.rfq-table col.col-description {
+    width: 28%;
 }
 
-.parts-table col.col-alternatives {
-    width: 30%;
+.rfq-table col.col-quantity {
+    width: 8%;
 }
 
-.parts-table th,
-.parts-table td {
+.rfq-table col.col-alternatives {
+    width: 22%;
+}
+
+.rfq-table th,
+.rfq-table td {
     padding: 10px 12px;
     border: 1px solid var(--border);
     text-align: left;
@@ -1152,40 +1095,53 @@ main {
     word-break: break-word;
 }
 
-.parts-table th {
+.rfq-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
     background: var(--light);
     font-weight: 600;
 }
 
-.parts-table tbody tr:nth-child(even) {
-    background: #fafafa;
+.rfq-table tbody tr.rfq-group-start td {
+    border-top: 2px solid var(--border);
 }
 
-.pagination-controls {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    margin-top: 20px;
-    padding-top: 16px;
+.rfq-table tbody tr.rfq-group-start:first-child td {
     border-top: 1px solid var(--border);
 }
 
-.page-indicator {
+.rfq-table td.col-subject {
+    background: #f8fafc;
+}
+
+.rfq-subject {
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.rfq-subject-time {
+    margin-top: 6px;
     color: var(--secondary);
-    font-size: 0.95rem;
-    min-width: 72px;
+    font-size: 0.85rem;
+    font-weight: 400;
+}
+
+.rfq-scroll-sentinel {
+    height: 1px;
+    width: 100%;
+    pointer-events: none;
+}
+
+.rfq-load-more-status {
+    margin-top: 12px;
     text-align: center;
-}
-
-.pagination-controls .btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.no-items {
     color: var(--secondary);
-    padding: 12px 0;
+    font-size: 0.9rem;
+}
+
+.rfq-load-more-status.rfq-load-more-error {
+    color: #991b1b;
 }
 
 /* Responsive */
@@ -1287,18 +1243,27 @@ main {
         flex-direction: column;
     }
 
-    .letter-row {
-        grid-template-columns: 20px minmax(0, 1fr);
-        grid-template-rows: auto auto;
+    .rfq-table-wrap {
+        max-height: min(65vh, 560px);
     }
 
-    .letter-subject {
-        grid-column: 2;
+    .rfq-table col.col-subject {
+        width: 30%;
     }
 
-    .letter-time,
-    .letter-parts-count {
-        grid-column: 2;
-        text-align: left;
+    .rfq-table col.col-part-number {
+        width: 18%;
+    }
+
+    .rfq-table col.col-description {
+        width: 24%;
+    }
+
+    .rfq-table col.col-quantity {
+        width: 8%;
+    }
+
+    .rfq-table col.col-alternatives {
+        width: 20%;
     }
 }

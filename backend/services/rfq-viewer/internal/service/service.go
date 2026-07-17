@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	DefaultLimit = 20
+	DefaultLimit = 50
 	MaxLimit     = 100
 )
 
@@ -37,9 +37,18 @@ func (s *RFQService) GetClientRFQs(ctx context.Context, clientID uint64, after *
 	}
 
 	page := domain.RFQPage{Items: items}
-	if len(items) == limit {
+
+	partCount := 0
+	for _, item := range items {
+		partCount += len(item.Parts)
+	}
+	if partCount >= limit {
 		last := items[len(items)-1]
-		page.NextCursor = &domain.Cursor{JobID: last.JobID, ReceivedAt: last.ReceivedAt}
+		page.NextCursor = &domain.Cursor{
+			JobID:      last.JobID,
+			PartID:     last.Parts[len(last.Parts)-1].ID,
+			ReceivedAt: last.ReceivedAt,
+		}
 	}
 
 	return page, nil

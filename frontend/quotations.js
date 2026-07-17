@@ -5,34 +5,32 @@ const CLIENTS = {
     4: 'Pobeda',
 };
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 50;
 
 const clientHeadersRow = document.getElementById('clientHeadersRow');
 const lettersPanel = document.getElementById('lettersPanel');
 const lettersStatus = document.getElementById('lettersStatus');
-const lettersList = document.getElementById('lettersList');
-const prevPageBtn = document.getElementById('prevPageBtn');
-const nextPageBtn = document.getElementById('nextPageBtn');
-const pageIndicator = document.getElementById('pageIndicator');
+const rfqTableWrap = document.getElementById('rfqTableWrap');
+const rfqTableBody = document.getElementById('rfqTableBody');
+const rfqScrollSentinel = document.getElementById('rfqScrollSentinel');
+const rfqLoadMoreStatus = document.getElementById('rfqLoadMoreStatus');
 
 let activeClientId = null;
-let expandedLetterKeys = new Set();
 const clientStates = {};
+let scrollObserver = null;
 
 document.addEventListener('DOMContentLoaded', init);
 
 function init() {
     clientHeadersRow.addEventListener('click', onClientHeaderClick);
-    prevPageBtn.addEventListener('click', onPreviousPage);
-    nextPageBtn.addEventListener('click', onNextPage);
+    setupScrollObserver();
 }
 
 function createClientState() {
     return {
-        pageCursors: [null],
-        currentPageIndex: 0,
-        nextCursor: null,
         items: [],
+        nextCursor: null,
+        hasNext: false,
         loading: false,
     };
 }
@@ -56,10 +54,9 @@ function onClientHeaderClick(event) {
     }
 
     activeClientId = clientId;
-    expandedLetterKeys = new Set();
     updateClientHeaderButtons();
     lettersPanel.hidden = false;
-    loadLettersPage(clientId, 0);
+    resetAndLoad(clientId);
 }
 
 function updateClientHeaderButtons() {
@@ -69,49 +66,104 @@ function updateClientHeaderButtons() {
     });
 }
 
-async function loadLettersPage(clientId, pageIndex) {
+function resetAndLoad(clientId) {
     const state = getClientState(clientId);
+    state.items = [];
+    state.nextCursor = null;
+    state.hasNext = false;
+    renderTable([]);
+    hideLoadMoreStatus();
+    loadMore(clientId, true);
+}
+
+async function loadMore(clientId, isInitial = false) {
+    const state = getClientState(clientId);
+    if (state.loading) {
+        return;
+    }
+    if (!isInitial && !state.hasNext) {
+        return;
+    }
+
     state.loading = true;
-    showLettersStatus('Loading quotations…', 'info');
-    renderLetters([]);
-    updatePaginationControls(state);
+
+    if (isInitial) {
+        showLettersStatus('Loading quotations…', 'info');
+        rfqTableWrap.hidden = true;
+    } else {
+        showLoadMoreStatus('Loading more…');
+    }
+
+    let shouldContinue = false;
 
     try {
-        const cursor = state.pageCursors[pageIndex] ?? null;
-        const data = await fetchLetters(clientId, cursor);
-        state.items = data.items || [];
-        state.nextCursor = data.next_cursor || null;
-        state.currentPageIndex = pageIndex;
+        const after = isInitial ? null : state.nextCursor;
+        const data = await fetchLetters(clientId, after);
+        const newItems = data.items || [];
+        const pagination = data.pagination || {};
 
-        if (data.next_cursor) {
-            state.pageCursors[pageIndex + 1] = data.next_cursor;
+        if (isInitial) {
+            state.items = newItems;
         } else {
-            state.pageCursors = state.pageCursors.slice(0, pageIndex + 1);
+            state.items = mergeRfqs(state.items, newItems);
         }
+
+        state.hasNext = Boolean(pagination.has_next);
+        state.nextCursor = pagination.next || null;
 
         hideLettersStatus();
+        hideLoadMoreStatus();
 
         if (state.items.length === 0) {
+            rfqTableWrap.hidden = true;
             showLettersStatus(`No quotations found for ${CLIENTS[clientId]}.`, 'info');
+        } else {
+            rfqTableWrap.hidden = false;
+            renderTable(state.items);
         }
 
-        renderLetters(state.items);
-        updatePaginationControls(state);
+        updateScrollSentinel(state);
+        shouldContinue = true;
     } catch (error) {
-        showLettersStatus(error.message, 'error');
-        renderLetters([]);
-        updatePaginationControls(state);
+        if (isInitial) {
+            rfqTableWrap.hidden = true;
+            renderTable([]);
+            showLettersStatus(error.message, 'error');
+        } else {
+            showLoadMoreStatus(error.message, true);
+        }
+        updateScrollSentinel(state);
     } finally {
         state.loading = false;
     }
+
+    if (shouldContinue) {
+        maybeContinueLoading(clientId);
+    }
 }
 
-async function fetchLetters(clientId, cursor) {
+function maybeContinueLoading(clientId) {
+    if (activeClientId !== clientId) {
+        return;
+    }
+
+    const state = getClientState(clientId);
+    if (!state.hasNext || state.loading || rfqTableWrap.hidden || rfqScrollSentinel.hidden) {
+        return;
+    }
+
+    const rootRect = rfqTableWrap.getBoundingClientRect();
+    const sentinelRect = rfqScrollSentinel.getBoundingClientRect();
+    if (sentinelRect.top <= rootRect.bottom + 80) {
+        loadMore(clientId, false);
+    }
+}
+
+async function fetchLetters(clientId, afterCursor) {
     const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
 
-    if (cursor) {
-        params.set('after_job_id', cursor.job_id);
-        params.set('after_received_at', cursor.received_at);
+    if (afterCursor) {
+        params.set('after', afterCursor);
     }
 
     const response = await fetch(
@@ -125,145 +177,124 @@ async function fetchLetters(clientId, cursor) {
     return response.json();
 }
 
-function renderLetters(items) {
+function mergeRfqs(existing, incoming) {
+    if (!incoming.length) {
+        return existing;
+    }
+    if (!existing.length) {
+        return incoming.slice();
+    }
+
+    const result = existing.slice();
+    const last = result[result.length - 1];
+    const first = incoming[0];
+
+    if (sameRfq(last, first)) {
+        result[result.length - 1] = {
+            ...last,
+            parts: [...(last.parts || []), ...(first.parts || [])],
+        };
+        return result.concat(incoming.slice(1));
+    }
+
+    return result.concat(incoming);
+}
+
+function sameRfq(a, b) {
+    return a.subject === b.subject && a.received_at === b.received_at;
+}
+
+function renderTable(items) {
     if (!items.length) {
-        lettersList.innerHTML = '';
+        rfqTableBody.innerHTML = '';
         return;
     }
 
-    lettersList.innerHTML = items.map((item, index) => {
-        const letterKey = getLetterKey(item, index);
-        const isExpanded = expandedLetterKeys.has(letterKey);
+    const rows = [];
+
+    items.forEach((item) => {
+        const parts = Array.isArray(item.parts) ? item.parts : [];
+        if (!parts.length) {
+            return;
+        }
+
         const subject = escapeHtml(item.subject || '(No subject)');
         const receivedAt = formatReceivedAt(item.received_at);
-        const partsCount = Array.isArray(item.parts) ? item.parts.length : 0;
+        const rowspan = parts.length;
 
-        return `
-            <div class="letter-item">
-                <div class="letter-row ${isExpanded ? 'expanded' : ''}" data-letter-key="${escapeHtml(letterKey)}" role="button" tabindex="0">
-                    <span class="letter-caret" aria-hidden="true">${isExpanded ? '▾' : '▸'}</span>
-                    <span class="letter-subject" title="${subject}">${subject}</span>
-                    <span class="letter-time">${receivedAt}</span>
-                    <span class="letter-parts-count">${partsCount} part${partsCount === 1 ? '' : 's'}</span>
-                </div>
-                <div class="letter-details ${isExpanded ? '' : 'hidden'}" data-letter-key="${escapeHtml(letterKey)}">
-                    ${renderPartsTable(item.parts || [])}
-                </div>
-            </div>
-        `;
-    }).join('');
+        parts.forEach((part, partIndex) => {
+            const partNumber = escapeHtml(part.part_number || '—');
+            const description = escapeHtml(part.description ?? '—');
+            const quantity = part.quantity != null ? escapeHtml(String(part.quantity)) : '—';
+            const alternatives = Array.isArray(part.alternatives) && part.alternatives.length
+                ? escapeHtml(part.alternatives.join(', '))
+                : '—';
 
-    lettersList.querySelectorAll('.letter-row').forEach((row) => {
-        row.addEventListener('click', onLetterRowClick);
-        row.addEventListener('keydown', onLetterRowKeydown);
+            const isGroupStart = partIndex === 0;
+            const rowClass = isGroupStart ? 'rfq-group-start' : '';
+
+            let subjectCell = '';
+            if (isGroupStart) {
+                subjectCell = `
+                    <td class="col-subject" rowspan="${rowspan}">
+                        <div class="rfq-subject">${subject}</div>
+                        <div class="rfq-subject-time">${receivedAt}</div>
+                    </td>
+                `;
+            }
+
+            rows.push(`
+                <tr class="${rowClass}">
+                    ${subjectCell}
+                    <td class="col-part-number">${partNumber}</td>
+                    <td class="col-description">${description}</td>
+                    <td class="col-quantity">${quantity}</td>
+                    <td class="col-alternatives">${alternatives}</td>
+                </tr>
+            `);
+        });
     });
+
+    rfqTableBody.innerHTML = rows.join('');
 }
 
-function onLetterRowClick(event) {
-    toggleLetterExpansion(event.currentTarget.dataset.letterKey);
+function setupScrollObserver() {
+    scrollObserver = new IntersectionObserver(
+        (entries) => {
+            const entry = entries[0];
+            if (!entry?.isIntersecting || activeClientId == null) {
+                return;
+            }
+
+            const state = getClientState(activeClientId);
+            if (state.hasNext && !state.loading) {
+                loadMore(activeClientId, false);
+            }
+        },
+        {
+            root: rfqTableWrap,
+            rootMargin: '80px',
+            threshold: 0,
+        }
+    );
+
+    scrollObserver.observe(rfqScrollSentinel);
 }
 
-function onLetterRowKeydown(event) {
-    if (event.key !== 'Enter' && event.key !== ' ') {
-        return;
-    }
-
-    event.preventDefault();
-    toggleLetterExpansion(event.currentTarget.dataset.letterKey);
+function updateScrollSentinel(state) {
+    rfqScrollSentinel.hidden = !state.hasNext;
 }
 
-function toggleLetterExpansion(letterKey) {
-    if (expandedLetterKeys.has(letterKey)) {
-        expandedLetterKeys.delete(letterKey);
-    } else {
-        expandedLetterKeys.add(letterKey);
-    }
-
-    const state = getClientState(activeClientId);
-    renderLetters(state.items);
+function showLoadMoreStatus(message, isError = false) {
+    rfqLoadMoreStatus.hidden = false;
+    rfqLoadMoreStatus.textContent = message;
+    rfqLoadMoreStatus.className = `rfq-load-more-status${isError ? ' rfq-load-more-error' : ''}`;
 }
 
-function renderPartsTable(parts) {
-    if (!parts.length) {
-        return '<p class="no-items">No parts in this quotation.</p>';
-    }
-
-    const rows = parts.map((part) => {
-        const partNumber = escapeHtml(part.part_number || '—');
-        const description = escapeHtml(part.description ?? '—');
-        const quantity = part.quantity != null ? escapeHtml(String(part.quantity)) : '—';
-        const alternatives = Array.isArray(part.alternatives) && part.alternatives.length
-            ? escapeHtml(part.alternatives.join(', '))
-            : '—';
-
-        return `
-            <tr>
-                <td class="col-part-number">${partNumber}</td>
-                <td class="col-description">${description}</td>
-                <td class="col-quantity">${quantity}</td>
-                <td class="col-alternatives">${alternatives}</td>
-            </tr>
-        `;
-    }).join('');
-
-    return `
-        <div class="parts-table-container">
-            <table class="parts-table">
-                <colgroup>
-                    <col class="col-part-number">
-                    <col class="col-description">
-                    <col class="col-quantity">
-                    <col class="col-alternatives">
-                </colgroup>
-                <thead>
-                    <tr>
-                        <th>Part Number</th>
-                        <th>Description</th>
-                        <th>Quantity</th>
-                        <th>Alternatives</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rows}
-                </tbody>
-            </table>
-        </div>
-    `;
-}
-
-function updatePaginationControls(state) {
-    const pageNumber = state.currentPageIndex + 1;
-    pageIndicator.textContent = `Page ${pageNumber}`;
-    prevPageBtn.disabled = state.loading || state.currentPageIndex === 0;
-    nextPageBtn.disabled = state.loading || !state.nextCursor;
-}
-
-function onPreviousPage() {
-    if (activeClientId == null) {
-        return;
-    }
-
-    const state = getClientState(activeClientId);
-    if (state.currentPageIndex === 0 || state.loading) {
-        return;
-    }
-
-    expandedLetterKeys = new Set();
-    loadLettersPage(activeClientId, state.currentPageIndex - 1);
-}
-
-function onNextPage() {
-    if (activeClientId == null) {
-        return;
-    }
-
-    const state = getClientState(activeClientId);
-    if (!state.nextCursor || state.loading) {
-        return;
-    }
-
-    expandedLetterKeys = new Set();
-    loadLettersPage(activeClientId, state.currentPageIndex + 1);
+function hideLoadMoreStatus() {
+    rfqLoadMoreStatus.hidden = true;
+    rfqLoadMoreStatus.textContent = '';
+    rfqLoadMoreStatus.className = 'rfq-load-more-status';
 }
 
 function showLettersStatus(message, type) {
@@ -276,11 +307,6 @@ function hideLettersStatus() {
     lettersStatus.hidden = true;
     lettersStatus.textContent = '';
     lettersStatus.className = 'letters-status';
-}
-
-function getLetterKey(item, index) {
-    const state = getClientState(activeClientId);
-    return `${activeClientId}-${state.currentPageIndex}-${index}`;
 }
 
 function formatReceivedAt(value) {

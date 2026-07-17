@@ -18,6 +18,7 @@ type RFQ struct {
 }
 
 type Part struct {
+	ID           uint64
 	PartNumber   string
 	Description  *string
 	Quantity     *int

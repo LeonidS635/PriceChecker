@@ -4,42 +4,45 @@ import (
 	"context"
 
 	"github.com/LeonidS635/PriceChecker/backend/services/rfq-viewer/internal/domain"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
 const (
-	getJobsByClientIDQuery = `
-	SELECT job_id, client_id, sender_email, source_message_id, subject, received_at, processed_at
-	FROM rfq_metadata
-	WHERE client_id = $1
-	ORDER BY received_at DESC, job_id DESC
-	LIMIT $2
+	getPartsPaginatedQuery = `
+SELECT
+	rm.job_id, rm.client_id, rm.sender_email, rm.source_message_id, rm.subject, rm.received_at, rm.processed_at,
+	p.id, p.part_number, p.description, p.quantity, p.alternatives
+FROM rfq_metadata rm
+JOIN rfq_parts p ON rm.job_id = p.job_id
+WHERE rm.client_id = $1
+ORDER BY rm.received_at DESC, rm.job_id DESC, p.id ASC
+LIMIT $2
 `
 
-	getJobsByClientIDAfterQuery = `
-	SELECT job_id, client_id, sender_email, source_message_id, subject, received_at, processed_at
-	FROM rfq_metadata
-	WHERE client_id = $1 AND (received_at, job_id) < ($2, $3)
-	ORDER BY received_at DESC, job_id DESC
-	LIMIT $4
-`
-
-	getPartsByJobIDsQuery = `
-	SELECT job_id, part_number, description, quantity, alternatives
-	FROM rfq_parts
-	WHERE job_id = ANY($1)
+	getPartsPaginatedAfterQuery = `
+SELECT
+	rm.job_id, rm.client_id, rm.sender_email, rm.source_message_id, rm.subject, rm.received_at, rm.processed_at,
+	p.id, p.part_number, p.description, p.quantity, p.alternatives
+FROM rfq_metadata rm
+JOIN rfq_parts p ON rm.job_id = p.job_id
+WHERE rm.client_id = $1
+	AND (
+		(rm.received_at, rm.job_id) < ($2, $3)
+		OR ((rm.received_at, rm.job_id) = ($2, $3) AND p.id > $4)
+	)
+ORDER BY rm.received_at DESC, rm.job_id DESC, p.id ASC
+LIMIT $5
 `
 )
 
-func (d *DB) GetJobsByClientID(ctx context.Context, clientID uint64, after *domain.Cursor, limit int) ([]domain.RFQ, error) {
+func (d *DB) GetPartsByClientID(ctx context.Context, clientID uint64, after *domain.Cursor, limit int) ([]domain.RFQ, error) {
 	var rows pgx.Rows
 	var err error
 
 	if after == nil {
-		rows, err = d.conn(ctx).Query(ctx, getJobsByClientIDQuery, clientID, limit)
+		rows, err = d.conn(ctx).Query(ctx, getPartsPaginatedQuery, clientID, limit)
 	} else {
-		rows, err = d.conn(ctx).Query(ctx, getJobsByClientIDAfterQuery, clientID, after.ReceivedAt, after.JobID, limit)
+		rows, err = d.conn(ctx).Query(ctx, getPartsPaginatedAfterQuery, clientID, after.ReceivedAt, after.JobID, after.PartID, limit)
 	}
 	if err != nil {
 		return nil, err
@@ -48,7 +51,10 @@ func (d *DB) GetJobsByClientID(ctx context.Context, clientID uint64, after *doma
 
 	var items []domain.RFQ
 	for rows.Next() {
-		var item domain.RFQ
+		var (
+			item domain.RFQ
+			part domain.Part
+		)
 		if err := rows.Scan(
 			&item.JobID,
 			&item.ClientID,
@@ -57,40 +63,7 @@ func (d *DB) GetJobsByClientID(ctx context.Context, clientID uint64, after *doma
 			&item.Subject,
 			&item.ReceivedAt,
 			&item.ProcessedAt,
-		); err != nil {
-			return nil, err
-		}
-
-		items = append(items, item)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return items, nil
-}
-
-func (d *DB) GetPartsByJobIDs(ctx context.Context, jobIDs []uuid.UUID) (map[uuid.UUID][]domain.Part, error) {
-	rawJobIDs := make([]string, len(jobIDs))
-	for i, jobID := range jobIDs {
-		rawJobIDs[i] = jobID.String()
-	}
-
-	rows, err := d.conn(ctx).Query(ctx, getPartsByJobIDsQuery, rawJobIDs)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	result := make(map[uuid.UUID][]domain.Part)
-	for rows.Next() {
-		var (
-			jobID uuid.UUID
-			part  domain.Part
-		)
-		if err := rows.Scan(
-			&jobID,
+			&part.ID,
 			&part.PartNumber,
 			&part.Description,
 			&part.Quantity,
@@ -99,12 +72,15 @@ func (d *DB) GetPartsByJobIDs(ctx context.Context, jobIDs []uuid.UUID) (map[uuid
 			return nil, err
 		}
 
-		result[jobID] = append(result[jobID], part)
+		if len(items) == 0 || items[len(items)-1].JobID != item.JobID {
+			items = append(items, item)
+		}
+		items[len(items)-1].Parts = append(items[len(items)-1].Parts, part)
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return result, nil
+	return items, nil
 }

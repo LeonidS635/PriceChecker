@@ -10,8 +10,7 @@ import (
 type rfqStorage interface {
 	SaveJob(ctx context.Context, item domain.RFQ) error
 	SaveParts(ctx context.Context, jobID uuid.UUID, parts []domain.Part) error
-	GetJobsByClientID(ctx context.Context, clientID uint64, after *domain.Cursor, limit int) ([]domain.RFQ, error)
-	GetPartsByJobIDs(ctx context.Context, jobIDs []uuid.UUID) (map[uuid.UUID][]domain.Part, error)
+	GetPartsByClientID(ctx context.Context, clientID uint64, after *domain.Cursor, limit int) ([]domain.RFQ, error)
 }
 
 type txManager interface {
@@ -40,27 +39,5 @@ func (s *StorageFacade) SaveRFQ(ctx context.Context, item domain.RFQ) error {
 }
 
 func (s *StorageFacade) GetClientRFQs(ctx context.Context, clientID uint64, after *domain.Cursor, limit int) ([]domain.RFQ, error) {
-	items, err := s.storage.GetJobsByClientID(ctx, clientID, after, limit)
-	if err != nil {
-		return nil, err
-	}
-	if len(items) == 0 {
-		return items, nil
-	}
-
-	jobIDs := make([]uuid.UUID, len(items))
-	for i, item := range items {
-		jobIDs[i] = item.JobID
-	}
-
-	partsByJob, err := s.storage.GetPartsByJobIDs(ctx, jobIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	for i := range items {
-		items[i].Parts = partsByJob[items[i].JobID]
-	}
-
-	return items, nil
+	return s.storage.GetPartsByClientID(ctx, clientID, after, limit)
 }

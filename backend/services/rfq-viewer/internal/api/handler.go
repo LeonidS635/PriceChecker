@@ -7,12 +7,10 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/LeonidS635/PriceChecker/backend/services/rfq-viewer/internal/api/dto"
 	"github.com/LeonidS635/PriceChecker/backend/services/rfq-viewer/internal/domain"
 	"github.com/LeonidS635/PriceChecker/backend/services/rfq-viewer/internal/service"
-	"github.com/google/uuid"
 )
 
 type rfqService interface {
@@ -34,7 +32,7 @@ func (h *Handler) GetClientRFQs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	after, err := parseCursor(r)
+	cursor, err := parseCursor(r)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
@@ -46,7 +44,7 @@ func (h *Handler) GetClientRFQs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page, err := h.service.GetClientRFQs(r.Context(), clientID, after, limit)
+	page, err := h.service.GetClientRFQs(r.Context(), clientID, cursor, limit)
 	if err != nil {
 		slog.Error("failed to get client rfqs", "client_id", clientID, "err", err)
 		writeError(w, http.StatusInternalServerError, "internal server error")
@@ -57,27 +55,17 @@ func (h *Handler) GetClientRFQs(w http.ResponseWriter, r *http.Request) {
 }
 
 func parseCursor(r *http.Request) (*domain.Cursor, error) {
-	jobIDRaw := r.URL.Query().Get("after_job_id")
-	receivedAtRaw := r.URL.Query().Get("after_received_at")
-
-	if jobIDRaw == "" && receivedAtRaw == "" {
+	after := r.URL.Query().Get("after")
+	if after == "" {
 		return nil, nil
 	}
-	if jobIDRaw == "" || receivedAtRaw == "" {
-		return nil, fmt.Errorf("after_job_id and after_received_at must be provided together")
-	}
 
-	jobID, err := uuid.Parse(jobIDRaw)
+	cursor, err := dto.FromPaginationToCursor(after)
 	if err != nil {
-		return nil, fmt.Errorf("invalid after_job_id")
+		return nil, fmt.Errorf("parse cursor: %w", err)
 	}
 
-	receivedAt, err := time.Parse(time.RFC3339Nano, receivedAtRaw)
-	if err != nil {
-		return nil, fmt.Errorf("invalid after_received_at")
-	}
-
-	return &domain.Cursor{JobID: jobID, ReceivedAt: receivedAt}, nil
+	return dto.ToDomainCursor(cursor), nil
 }
 
 func parseQueryInt(r *http.Request, key string, defaultValue int) (int, error) {

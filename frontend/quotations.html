@@ -48,12 +48,29 @@
 
             <div id="lettersPanel" class="letters-panel card-panel" hidden>
                 <div id="lettersStatus" class="letters-status" hidden></div>
-                <div id="lettersList" class="letters-list"></div>
-                <div class="pagination-controls">
-                    <button type="button" class="btn" id="prevPageBtn" disabled>Previous</button>
-                    <span id="pageIndicator" class="page-indicator">Page 1</span>
-                    <button type="button" class="btn" id="nextPageBtn" disabled>Next</button>
+                <div class="rfq-table-wrap" id="rfqTableWrap" hidden>
+                    <table class="rfq-table" id="rfqTable">
+                        <colgroup>
+                            <col class="col-subject">
+                            <col class="col-part-number">
+                            <col class="col-description">
+                            <col class="col-quantity">
+                            <col class="col-alternatives">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <th>Part Number</th>
+                                <th>Description</th>
+                                <th>Quantity</th>
+                                <th>Alternatives</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rfqTableBody"></tbody>
+                    </table>
+                    <div id="rfqScrollSentinel" class="rfq-scroll-sentinel" hidden></div>
                 </div>
+                <div id="rfqLoadMoreStatus" class="rfq-load-more-status" hidden></div>
             </div>
         </div>
     </main>

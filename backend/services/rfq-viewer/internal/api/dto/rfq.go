@@ -16,12 +16,18 @@ type RFQ struct {
 	Parts      []Part    `json:"parts"`
 }
 
-type Cursor struct {
-	JobID      string    `json:"job_id"`
-	ReceivedAt time.Time `json:"received_at"`
+type ClientRFQsPage struct {
+	Items      []RFQ      `json:"items"`
+	Pagination Pagination `json:"pagination,omitempty"`
 }
 
-type ClientRFQsPage struct {
-	Items      []RFQ   `json:"items"`
-	NextCursor *Cursor `json:"next_cursor,omitempty"`
+type Pagination struct {
+	HasNext bool   `json:"has_next"`
+	Next    string `json:"next,omitempty"`
+}
+
+type Cursor struct {
+	ReceivedAt time.Time `json:"received_at"`
+	JobID      string    `json:"job_id"`
+	PartID     uint64    `json:"part_id"`
 }

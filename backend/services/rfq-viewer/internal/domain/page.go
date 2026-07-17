@@ -7,8 +7,9 @@ import (
 )
 
 type Cursor struct {
-	JobID      uuid.UUID
 	ReceivedAt time.Time
+	JobID      uuid.UUID
+	PartID     uint64
 }
 
 type RFQPage struct {

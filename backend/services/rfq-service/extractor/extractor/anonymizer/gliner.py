@@ -758,7 +758,9 @@ class GLiNERAnonymizer:
                 MODEL_NAME,
                 self._device,
             )
-            self._model = GLiNER.from_pretrained(MODEL_NAME).to(self._device)
+            self._model = GLiNER.from_pretrained(
+                MODEL_NAME, local_files_only=True, low_cpu_mem_usage=True,
+            ).to(self._device)
             logger.info("GLiNER model loaded")
         return self._model
 
