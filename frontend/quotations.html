@@ -38,7 +38,7 @@
     </header>
 
     <main class="quotations-page">
-        <div class="container">
+        <div class="container quotations-container">
             <div class="client-headers-row card-panel" id="clientHeadersRow">
                 <button type="button" class="client-header-btn" data-client-id="1">Aeroflot</button>
                 <button type="button" class="client-header-btn" data-client-id="2">Belavia</button>
@@ -46,11 +46,29 @@
                 <button type="button" class="client-header-btn" data-client-id="4">Pobeda</button>
             </div>
 
+            <div class="selected-parts-bar card-panel" id="selectedPartsBar">
+                <div class="selected-parts-summary">
+                    <button type="button" class="selected-parts-toggle" id="selectedPartsToggle" aria-expanded="false">
+                        <span class="selected-parts-chevron" aria-hidden="true">▸</span>
+                        <span id="selectedPartsCount">0 rows selected</span>
+                        <span class="selected-parts-numbers-hint" id="selectedPartsNumbersHint"></span>
+                    </button>
+                    <div class="selected-parts-actions">
+                        <button type="button" class="btn btn-secondary btn-sm" id="clearSelectedParts" disabled>Clear</button>
+                        <button type="button" class="btn btn-primary btn-sm" id="searchSelectedParts" disabled>Search</button>
+                    </div>
+                </div>
+                <div class="selected-parts-details" id="selectedPartsDetails" hidden>
+                    <div class="selected-parts-list" id="selectedPartsList"></div>
+                </div>
+            </div>
+
             <div id="lettersPanel" class="letters-panel card-panel" hidden>
                 <div id="lettersStatus" class="letters-status" hidden></div>
                 <div class="rfq-table-wrap" id="rfqTableWrap" hidden>
                     <table class="rfq-table" id="rfqTable">
                         <colgroup>
+                            <col class="col-select">
                             <col class="col-subject">
                             <col class="col-part-number">
                             <col class="col-description">
@@ -59,6 +77,7 @@
                         </colgroup>
                         <thead>
                             <tr>
+                                <th class="select-column" aria-label="Select row"></th>
                                 <th>Subject</th>
                                 <th>Part Number</th>
                                 <th>Description</th>

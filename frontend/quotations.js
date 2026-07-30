@@ -6,6 +6,7 @@ const CLIENTS = {
 };
 
 const PAGE_SIZE = 50;
+const PENDING_SEARCH_PARTS_KEY = 'pendingSearchParts';
 
 const clientHeadersRow = document.getElementById('clientHeadersRow');
 const lettersPanel = document.getElementById('lettersPanel');
@@ -14,16 +15,35 @@ const rfqTableWrap = document.getElementById('rfqTableWrap');
 const rfqTableBody = document.getElementById('rfqTableBody');
 const rfqScrollSentinel = document.getElementById('rfqScrollSentinel');
 const rfqLoadMoreStatus = document.getElementById('rfqLoadMoreStatus');
+const selectedPartsToggle = document.getElementById('selectedPartsToggle');
+const selectedPartsDetails = document.getElementById('selectedPartsDetails');
+const selectedPartsCount = document.getElementById('selectedPartsCount');
+const selectedPartsNumbersHint = document.getElementById('selectedPartsNumbersHint');
+const selectedPartsList = document.getElementById('selectedPartsList');
+const clearSelectedParts = document.getElementById('clearSelectedParts');
+const searchSelectedParts = document.getElementById('searchSelectedParts');
 
 let activeClientId = null;
 const clientStates = {};
 let scrollObserver = null;
 
+/** @type {Map<string, { partNumber: string, alternatives: string[] }>} */
+const selectedRows = new Map();
+
+/** @type {Set<string>} */
+const excludedPartNumbers = new Set();
+
 document.addEventListener('DOMContentLoaded', init);
 
 function init() {
     clientHeadersRow.addEventListener('click', onClientHeaderClick);
+    rfqTableBody.addEventListener('change', onRowCheckboxChange);
+    selectedPartsToggle.addEventListener('click', toggleSelectedPartsDetails);
+    clearSelectedParts.addEventListener('click', clearSelection);
+    searchSelectedParts.addEventListener('click', startSearchWithSelectedParts);
+    selectedPartsList.addEventListener('click', onSelectedPartsListClick);
     setupScrollObserver();
+    updateSelectedPartsBar();
 }
 
 function createClientState() {
@@ -204,6 +224,187 @@ function sameRfq(a, b) {
     return a.subject === b.subject && a.received_at === b.received_at;
 }
 
+function buildRowKey(clientId, item, partIndex) {
+    return `${clientId}|${item.received_at || ''}|${item.subject || ''}|${partIndex}`;
+}
+
+function normalizePartNumber(value) {
+    if (value == null) {
+        return '';
+    }
+    return String(value).trim();
+}
+
+function getDedupedSelectedPartNumbers() {
+    const seen = new Set();
+    const result = [];
+
+    selectedRows.forEach((entry) => {
+        const candidates = [entry.partNumber, ...(entry.alternatives || [])];
+        candidates.forEach((pn) => {
+            const normalized = normalizePartNumber(pn);
+            if (!normalized || seen.has(normalized) || excludedPartNumbers.has(normalized)) {
+                return;
+            }
+            seen.add(normalized);
+            result.push(normalized);
+        });
+    });
+
+    return result;
+}
+
+function getRowPartNumbers(entry) {
+    return [entry.partNumber, ...(entry.alternatives || [])]
+        .map(normalizePartNumber)
+        .filter(Boolean);
+}
+
+function syncRowCheckboxesFromSelection() {
+    rfqTableBody.querySelectorAll('.row-checkbox').forEach((checkbox) => {
+        checkbox.checked = selectedRows.has(checkbox.dataset.rowKey);
+    });
+}
+
+function pruneRowsWithNoRemainingParts() {
+    const keysToDelete = [];
+
+    selectedRows.forEach((entry, key) => {
+        const remaining = getRowPartNumbers(entry)
+            .filter((pn) => !excludedPartNumbers.has(pn));
+        if (!remaining.length) {
+            keysToDelete.push(key);
+        }
+    });
+
+    keysToDelete.forEach((key) => selectedRows.delete(key));
+    syncRowCheckboxesFromSelection();
+}
+
+function onRowCheckboxChange(event) {
+    const checkbox = event.target.closest('.row-checkbox');
+    if (!checkbox) {
+        return;
+    }
+
+    const key = checkbox.dataset.rowKey;
+    if (!key) {
+        return;
+    }
+
+    if (checkbox.checked) {
+        const entry = {
+            partNumber: checkbox.dataset.partNumber || '',
+            alternatives: parseAlternativesDataset(checkbox.dataset.alternatives),
+        };
+        selectedRows.set(key, entry);
+        getRowPartNumbers(entry).forEach((pn) => excludedPartNumbers.delete(pn));
+    } else {
+        selectedRows.delete(key);
+    }
+
+    updateSelectedPartsBar();
+}
+
+function parseAlternativesDataset(value) {
+    if (!value) {
+        return [];
+    }
+
+    try {
+        const parsed = JSON.parse(value);
+        if (!Array.isArray(parsed)) {
+            return [];
+        }
+        return parsed.map(normalizePartNumber).filter(Boolean);
+    } catch (error) {
+        return [];
+    }
+}
+
+function toggleSelectedPartsDetails() {
+    const isOpen = !selectedPartsDetails.hidden;
+    selectedPartsDetails.hidden = isOpen;
+    selectedPartsToggle.setAttribute('aria-expanded', String(!isOpen));
+    selectedPartsToggle.classList.toggle('open', !isOpen);
+}
+
+function clearSelection() {
+    selectedRows.clear();
+    excludedPartNumbers.clear();
+    rfqTableBody.querySelectorAll('.row-checkbox:checked').forEach((checkbox) => {
+        checkbox.checked = false;
+    });
+    updateSelectedPartsBar();
+}
+
+function removePartNumberFromSelection(partNumber) {
+    const target = normalizePartNumber(partNumber);
+    if (!target) {
+        return;
+    }
+
+    excludedPartNumbers.add(target);
+    pruneRowsWithNoRemainingParts();
+    updateSelectedPartsBar();
+}
+
+function onSelectedPartsListClick(event) {
+    const removeButton = event.target.closest('.selected-part-remove');
+    if (!removeButton) {
+        return;
+    }
+
+    event.preventDefault();
+    removePartNumberFromSelection(removeButton.dataset.partNumber);
+}
+
+function startSearchWithSelectedParts() {
+    const partNumbers = getDedupedSelectedPartNumbers();
+    if (!partNumbers.length) {
+        return;
+    }
+
+    localStorage.setItem(PENDING_SEARCH_PARTS_KEY, JSON.stringify(partNumbers));
+    window.location.href = 'index.html';
+}
+
+function updateSelectedPartsBar() {
+    const rowCount = selectedRows.size;
+    const partNumbers = getDedupedSelectedPartNumbers();
+    const hasSelection = rowCount > 0;
+
+    selectedPartsCount.textContent = `${rowCount} row${rowCount === 1 ? '' : 's'} selected`;
+    selectedPartsNumbersHint.textContent = hasSelection
+        ? `· ${partNumbers.length} part number${partNumbers.length === 1 ? '' : 's'}`
+        : '';
+
+    clearSelectedParts.disabled = !hasSelection;
+    searchSelectedParts.disabled = !hasSelection;
+
+    if (!partNumbers.length) {
+        selectedPartsList.innerHTML = '<p class="selected-parts-empty">No parts selected</p>';
+        return;
+    }
+
+    selectedPartsList.innerHTML = `
+        <ul>
+            ${partNumbers.map((pn) => `
+                <li class="selected-part-chip">
+                    <span class="selected-part-label">${escapeHtml(pn)}</span>
+                    <button
+                        type="button"
+                        class="selected-part-remove"
+                        data-part-number="${escapeHtml(pn)}"
+                        aria-label="Remove ${escapeHtml(pn)}"
+                        title="Remove"
+                    >&times;</button>
+                </li>
+            `).join('')}
+        </ul>
+    `;
+}
+
 function renderTable(items) {
     if (!items.length) {
         rfqTableBody.innerHTML = '';
@@ -211,6 +412,7 @@ function renderTable(items) {
     }
 
     const rows = [];
+    const clientId = activeClientId;
 
     items.forEach((item) => {
         const parts = Array.isArray(item.parts) ? item.parts : [];
@@ -223,11 +425,18 @@ function renderTable(items) {
         const rowspan = parts.length;
 
         parts.forEach((part, partIndex) => {
-            const partNumber = escapeHtml(part.part_number || '—');
+            const partNumberRaw = normalizePartNumber(part.part_number);
+            const alternativesRaw = Array.isArray(part.alternatives)
+                ? part.alternatives.map(normalizePartNumber).filter(Boolean)
+                : [];
+            const rowKey = buildRowKey(clientId, item, partIndex);
+            const isChecked = selectedRows.has(rowKey);
+
+            const partNumber = escapeHtml(partNumberRaw || '—');
             const description = escapeHtml(part.description ?? '—');
             const quantity = part.quantity != null ? escapeHtml(String(part.quantity)) : '—';
-            const alternatives = Array.isArray(part.alternatives) && part.alternatives.length
-                ? escapeHtml(part.alternatives.join(', '))
+            const alternatives = alternativesRaw.length
+                ? escapeHtml(alternativesRaw.join(', '))
                 : '—';
 
             const isGroupStart = partIndex === 0;
@@ -245,6 +454,17 @@ function renderTable(items) {
 
             rows.push(`
                 <tr class="${rowClass}">
+                    <td class="select-column">
+                        <input
+                            type="checkbox"
+                            class="row-checkbox"
+                            data-row-key="${escapeHtml(rowKey)}"
+                            data-part-number="${escapeHtml(partNumberRaw)}"
+                            data-alternatives="${escapeHtml(JSON.stringify(alternativesRaw))}"
+                            ${isChecked ? 'checked' : ''}
+                            aria-label="Select part ${partNumber}"
+                        >
+                    </td>
                     ${subjectCell}
                     <td class="col-part-number">${partNumber}</td>
                     <td class="col-description">${description}</td>

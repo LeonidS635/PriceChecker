@@ -128,9 +128,15 @@ excelUpload.addEventListener('change', () => {
     }
 });
 
+const PENDING_SEARCH_PARTS_KEY = 'pendingSearchParts';
+const LOGGED_IN_PORTALS_KEY = 'loggedInPortalIds';
+const SEARCH_FILTERS_KEY = 'searchFilterSelections';
+
 // Initialize application
-function init() {
-    fetchConfig();
+async function init() {
+    restoreLoggedInPortals();
+
+    const configReady = fetchConfig();
     fetchExcelFiles();
     loadQuotationData();
 
@@ -158,6 +164,121 @@ function init() {
 
     // Initialize select mode as enabled by default
     updateSelectionCount();
+
+    await configReady;
+    maybeStartPendingSearch();
+}
+
+function persistLoggedInPortals() {
+    sessionStorage.setItem(LOGGED_IN_PORTALS_KEY, JSON.stringify(Array.from(loggedInPortals)));
+}
+
+function restoreLoggedInPortals() {
+    const raw = sessionStorage.getItem(LOGGED_IN_PORTALS_KEY);
+    if (!raw) {
+        return;
+    }
+
+    try {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) {
+            return;
+        }
+
+        loggedInPortals = new Set(
+            parsed
+                .map((id) => Number(id))
+                .filter((id) => Number.isFinite(id))
+        );
+    } catch (error) {
+        // Ignore corrupted session state
+    }
+}
+
+function persistSearchFilters() {
+    const portalsFilterList = document.getElementById('portalsFilterList');
+    const conditionsFilterList = document.getElementById('conditionsFilterList');
+    if (!portalsFilterList || !conditionsFilterList) {
+        return;
+    }
+
+    const portalIds = Array.from(portalsFilterList.querySelectorAll('input:checked'))
+        .map((input) => parseInt(input.value, 10))
+        .filter((id) => Number.isFinite(id));
+    const conditionIds = Array.from(conditionsFilterList.querySelectorAll('input:checked'))
+        .map((input) => parseInt(input.value, 10))
+        .filter((id) => Number.isFinite(id));
+
+    sessionStorage.setItem(SEARCH_FILTERS_KEY, JSON.stringify({ portalIds, conditionIds }));
+}
+
+function restoreSearchFilters() {
+    const raw = sessionStorage.getItem(SEARCH_FILTERS_KEY);
+    if (!raw) {
+        return;
+    }
+
+    try {
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') {
+            return;
+        }
+
+        const portalIds = Array.isArray(parsed.portalIds)
+            ? new Set(parsed.portalIds.map((id) => Number(id)))
+            : null;
+        const conditionIds = Array.isArray(parsed.conditionIds)
+            ? new Set(parsed.conditionIds.map((id) => Number(id)))
+            : null;
+
+        if (portalIds) {
+            document.querySelectorAll('#portalsFilterList input[type="checkbox"]').forEach((checkbox) => {
+                checkbox.checked = portalIds.has(parseInt(checkbox.value, 10));
+            });
+        }
+
+        if (conditionIds) {
+            document.querySelectorAll('#conditionsFilterList input[type="checkbox"]').forEach((checkbox) => {
+                checkbox.checked = conditionIds.has(parseInt(checkbox.value, 10));
+            });
+        }
+    } catch (error) {
+        // Ignore corrupted session state
+    }
+}
+
+function consumePendingSearchParts() {
+    const raw = localStorage.getItem(PENDING_SEARCH_PARTS_KEY);
+    if (!raw) {
+        return null;
+    }
+
+    localStorage.removeItem(PENDING_SEARCH_PARTS_KEY);
+
+    try {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) {
+            return null;
+        }
+
+        const partNumbers = parsed
+            .map((pn) => String(pn).trim())
+            .filter((pn) => pn);
+
+        return partNumbers.length ? partNumbers : null;
+    } catch (error) {
+        return null;
+    }
+}
+
+function maybeStartPendingSearch() {
+    const partNumbers = consumePendingSearchParts();
+    if (!partNumbers) {
+        return;
+    }
+
+    partNumberInput.value = partNumbers.join(', ');
+    performSearch();
 }
 
 // Load quotation data from localStorage
@@ -881,6 +1002,7 @@ async function loginToAllPortals() {
                 addNotification('error', getPortalName(result.portal_id), '', result.error || 'Login failed');
             }
         });
+        persistLoggedInPortals();
     } catch (error) {
         if (error.name !== 'AbortError') {
             addNotification('error', 'Login', '', error.message);
@@ -940,6 +1062,7 @@ async function logoutAllPortalsHandler() {
                 addNotification('error', getPortalName(result.portal_id), '', result.error || 'Logout failed');
             }
         });
+        persistLoggedInPortals();
     } catch (error) {
         addNotification('error', 'Logout', '', error.message);
     } finally {
@@ -1043,6 +1166,7 @@ async function uploadExcelFile() {
 function deleteExcelFile(fileId) {
     excelPortals = excelPortals.filter(id => id !== fileId);
     loggedInPortals.delete(fileId);
+    persistLoggedInPortals();
 
     renderExcelFiles();
     renderFilterOptions();
@@ -1092,6 +1216,9 @@ function renderFilterOptions() {
         conditionsFilterList.appendChild(option);
     });
 
+    restoreSearchFilters();
+    syncSelectAllFilterCheckboxes();
+
     // Update select all checkboxes
     updateSelectAllFilterCheckboxes();
 }
@@ -1102,6 +1229,7 @@ function toggleSelectAllPortals() {
     portalCheckboxes.forEach(checkbox => {
         checkbox.checked = selectAllPortals.checked;
     });
+    persistSearchFilters();
 }
 
 // Toggle select all conditions
@@ -1110,6 +1238,26 @@ function toggleSelectAllConditions() {
     conditionCheckboxes.forEach(checkbox => {
         checkbox.checked = selectAllConditions.checked;
     });
+    persistSearchFilters();
+}
+
+function syncSelectAllFilterCheckboxes() {
+    const portalCheckboxes = document.querySelectorAll('#portalsFilterList input[type="checkbox"]');
+    const conditionCheckboxes = document.querySelectorAll('#conditionsFilterList input[type="checkbox"]');
+
+    if (portalCheckboxes.length) {
+        const allChecked = Array.from(portalCheckboxes).every(cb => cb.checked);
+        const someChecked = Array.from(portalCheckboxes).some(cb => cb.checked);
+        selectAllPortals.checked = allChecked;
+        selectAllPortals.indeterminate = someChecked && !allChecked;
+    }
+
+    if (conditionCheckboxes.length) {
+        const allChecked = Array.from(conditionCheckboxes).every(cb => cb.checked);
+        const someChecked = Array.from(conditionCheckboxes).some(cb => cb.checked);
+        selectAllConditions.checked = allChecked;
+        selectAllConditions.indeterminate = someChecked && !allChecked;
+    }
 }
 
 // Update select all filter checkboxes
@@ -1120,21 +1268,15 @@ function updateSelectAllFilterCheckboxes() {
     // Listen for changes on individual checkboxes
     portalCheckboxes.forEach(checkbox => {
         checkbox.addEventListener('change', () => {
-            const allChecked = Array.from(portalCheckboxes).every(cb => cb.checked);
-            const someChecked = Array.from(portalCheckboxes).some(cb => cb.checked);
-
-            selectAllPortals.checked = allChecked;
-            selectAllPortals.indeterminate = someChecked && !allChecked;
+            syncSelectAllFilterCheckboxes();
+            persistSearchFilters();
         });
     });
 
     conditionCheckboxes.forEach(checkbox => {
         checkbox.addEventListener('change', () => {
-            const allChecked = Array.from(conditionCheckboxes).every(cb => cb.checked);
-            const someChecked = Array.from(conditionCheckboxes).some(cb => cb.checked);
-
-            selectAllConditions.checked = allChecked;
-            selectAllConditions.indeterminate = someChecked && !allChecked;
+            syncSelectAllFilterCheckboxes();
+            persistSearchFilters();
         });
     });
 }
@@ -1152,6 +1294,7 @@ function applyTableFilters() {
         filterExistingResults(selectedPortals, selectedConditions);
     }
 
+    persistSearchFilters();
     addNotification('info', 'Filter', '', 'Filters applied');
     toggleModal(filterModal);
 }
@@ -1243,6 +1386,7 @@ function resetTableFilters() {
         filterExistingResults(allPortals, allConditions);
     }
 
+    persistSearchFilters();
     addNotification('info', 'Filter', '', 'Filters reset');
 }
 
