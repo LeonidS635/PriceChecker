@@ -49,11 +49,17 @@ def _build_raw_message(
     body: str = "Please provide quote",
     html: str | None = None,
     with_attachment: bool = False,
+    in_reply_to: str | None = None,
+    references: str | None = None,
 ) -> bytes:
     root = MimeEmail()
     root["From"] = "Buyer <buyer@example.com>"
     root["Subject"] = subject
     root["Message-Id"] = "<msg-123@example.com>"
+    if in_reply_to is not None:
+        root["In-Reply-To"] = in_reply_to
+    if references is not None:
+        root["References"] = references
 
     if html is None and not with_attachment:
         root.set_content(body)
@@ -100,7 +106,10 @@ def test_extract_attachments_reads_filename_and_content() -> None:
 
 
 def test_parse_raw_message_maps_fields() -> None:
-    raw = _build_raw_message()
+    raw = _build_raw_message(
+        in_reply_to="<parent@example.com>",
+        references="<root@example.com> <parent@example.com>",
+    )
     received_at = datetime(2026, 6, 2, 12, 0, tzinfo=timezone.utc)
 
     message = _parse_raw_message("INBOX", 42, raw, received_at)
@@ -111,6 +120,9 @@ def test_parse_raw_message_maps_fields() -> None:
     assert message.subject == "RFQ for parts"
     assert message.received_at == received_at
     assert "Please provide quote" in message.body
+    assert message.in_reply_to == "<parent@example.com>"
+    assert message.references == "<root@example.com> <parent@example.com>"
+    assert message.is_reply
 
 
 def test_folder_cursor_roundtrip_in_state() -> None:

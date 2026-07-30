@@ -207,14 +207,18 @@ def is_rfq_email(subject: str, body: str, attachments: list[Attachment] | None =
 
 
 def should_process_email(message: EmailMessage, allowed_domains: dict[str, int]) -> bool:
+    if message.is_reply:
+        logger.info("message is a reply")
+        return False
+
     is_message_sender_allowed = is_allowed_sender(message.sender_email, allowed_domains)
     is_message_rfq = is_rfq_email(message.subject, message.body, message.attachments)
 
     if not is_message_sender_allowed:
-        logger.info(f"message sender is not allowed")
+        logger.info("message sender is not allowed")
         return False
     if not is_message_rfq:
-        logger.info(f"message is not rfq")
+        logger.info("message is not rfq")
         return False
     
     return True

@@ -122,6 +122,8 @@ def _parse_raw_message(
         source_message_id=f"{mailbox}:uid-{uid}",
         internet_message_id=msg.get("Message-Id"),
         conversation_id=None,
+        in_reply_to=msg.get("In-Reply-To"),
+        references=msg.get("References"),
         sender_email=sender_email,
         subject=msg.get("Subject", "") or "",
         received_at=_normalize_internal_date(internal_date),

@@ -47,11 +47,17 @@ class EmailMessage:
     body_content_type: str = "text/plain"
     internet_message_id: str | None = None
     conversation_id: str | None = None
+    in_reply_to: str | None = None
+    references: str | None = None
     attachments: list[Attachment] = field(default_factory=list)
 
     @property
     def idempotency_key(self) -> str:
         return self.internet_message_id or self.source_message_id
+
+    @property
+    def is_reply(self) -> bool:
+        return bool(self.in_reply_to or self.references)
 
     @property
     def body_bytes(self) -> bytes:
