@@ -165,8 +165,8 @@ async function init() {
     // Initialize select mode as enabled by default
     updateSelectionCount();
 
+    maybeFillPendingSearchParts();
     await configReady;
-    maybeStartPendingSearch();
 }
 
 function persistLoggedInPortals() {
@@ -271,14 +271,13 @@ function consumePendingSearchParts() {
     }
 }
 
-function maybeStartPendingSearch() {
+function maybeFillPendingSearchParts() {
     const partNumbers = consumePendingSearchParts();
     if (!partNumbers) {
         return;
     }
 
     partNumberInput.value = partNumbers.join(', ');
-    performSearch();
 }
 
 // Load quotation data from localStorage

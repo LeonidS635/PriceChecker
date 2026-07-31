@@ -1100,6 +1100,15 @@ main {
     flex-shrink: 0;
 }
 
+.selected-parts-copy-status {
+    margin-top: 8px;
+    color: #166534;
+    background: #dcfce7;
+    border-radius: var(--radius);
+    padding: 6px 10px;
+    font-size: 0.85rem;
+}
+
 .btn-sm {
     padding: 6px 12px;
     font-size: 0.85rem;
@@ -1206,16 +1215,12 @@ main {
     table-layout: fixed;
 }
 
-.rfq-table col.col-select {
-    width: 40px;
-}
-
 .rfq-table col.col-subject {
-    width: 24%;
+    width: 26%;
 }
 
 .rfq-table col.col-part-number {
-    width: 16%;
+    width: 18%;
 }
 
 .rfq-table col.col-description {
@@ -1227,14 +1232,40 @@ main {
 }
 
 .rfq-table col.col-alternatives {
-    width: 22%;
+    width: 20%;
 }
 
-.rfq-table th.select-column,
-.rfq-table td.select-column {
-    text-align: center;
-    vertical-align: middle;
-    padding: 8px 4px;
+.rfq-subject-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.rfq-subject-text {
+    min-width: 0;
+}
+
+.rfq-part-select {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 8px;
+    cursor: pointer;
+    max-width: 100%;
+}
+
+.rfq-part-number-text {
+    word-break: break-word;
+    line-height: 1.35;
+}
+
+.rfq-table .group-checkbox,
+.rfq-table .row-checkbox {
+    margin: 2px 0 0;
+    flex-shrink: 0;
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    accent-color: var(--primary);
 }
 
 .rfq-table th,
@@ -1413,16 +1444,12 @@ main {
         max-height: calc(100vh - 280px);
     }
 
-    .rfq-table col.col-select {
-        width: 36px;
-    }
-
     .rfq-table col.col-subject {
-        width: 28%;
+        width: 30%;
     }
 
     .rfq-table col.col-part-number {
-        width: 18%;
+        width: 20%;
     }
 
     .rfq-table col.col-description {
@@ -1434,6 +1461,6 @@ main {
     }
 
     .rfq-table col.col-alternatives {
-        width: 20%;
+        width: 18%;
     }
 }

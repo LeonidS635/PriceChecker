@@ -22,10 +22,12 @@ const selectedPartsNumbersHint = document.getElementById('selectedPartsNumbersHi
 const selectedPartsList = document.getElementById('selectedPartsList');
 const clearSelectedParts = document.getElementById('clearSelectedParts');
 const searchSelectedParts = document.getElementById('searchSelectedParts');
+const selectedPartsCopyStatus = document.getElementById('selectedPartsCopyStatus');
 
 let activeClientId = null;
 const clientStates = {};
 let scrollObserver = null;
+let copyStatusTimer = null;
 
 /** @type {Map<string, { partNumber: string, alternatives: string[] }>} */
 const selectedRows = new Map();
@@ -37,10 +39,10 @@ document.addEventListener('DOMContentLoaded', init);
 
 function init() {
     clientHeadersRow.addEventListener('click', onClientHeaderClick);
-    rfqTableBody.addEventListener('change', onRowCheckboxChange);
+    rfqTableBody.addEventListener('change', onTableCheckboxChange);
     selectedPartsToggle.addEventListener('click', toggleSelectedPartsDetails);
     clearSelectedParts.addEventListener('click', clearSelection);
-    searchSelectedParts.addEventListener('click', startSearchWithSelectedParts);
+    searchSelectedParts.addEventListener('click', copySelectedPartsToSearch);
     selectedPartsList.addEventListener('click', onSelectedPartsListClick);
     setupScrollObserver();
     updateSelectedPartsBar();
@@ -228,6 +230,10 @@ function buildRowKey(clientId, item, partIndex) {
     return `${clientId}|${item.received_at || ''}|${item.subject || ''}|${partIndex}`;
 }
 
+function buildGroupKey(clientId, item) {
+    return `${clientId}|${item.received_at || ''}|${item.subject || ''}`;
+}
+
 function normalizePartNumber(value) {
     if (value == null) {
         return '';
@@ -260,10 +266,38 @@ function getRowPartNumbers(entry) {
         .filter(Boolean);
 }
 
+function queryCheckboxesByGroup(groupKey, selector) {
+    return Array.from(rfqTableBody.querySelectorAll(selector))
+        .filter((checkbox) => checkbox.dataset.groupKey === groupKey);
+}
+
 function syncRowCheckboxesFromSelection() {
     rfqTableBody.querySelectorAll('.row-checkbox').forEach((checkbox) => {
         checkbox.checked = selectedRows.has(checkbox.dataset.rowKey);
     });
+}
+
+function syncGroupCheckbox(groupKey) {
+    const groupCheckbox = queryCheckboxesByGroup(groupKey, '.group-checkbox')[0];
+    if (!groupCheckbox) {
+        return;
+    }
+
+    const rowCheckboxes = queryCheckboxesByGroup(groupKey, '.row-checkbox');
+    const selectedCount = rowCheckboxes.filter((checkbox) => selectedRows.has(checkbox.dataset.rowKey)).length;
+    const total = rowCheckboxes.length;
+
+    groupCheckbox.checked = total > 0 && selectedCount === total;
+    groupCheckbox.indeterminate = selectedCount > 0 && selectedCount < total;
+}
+
+function syncAllGroupCheckboxes() {
+    const groupKeys = new Set(
+        Array.from(rfqTableBody.querySelectorAll('.group-checkbox'))
+            .map((checkbox) => checkbox.dataset.groupKey)
+            .filter(Boolean)
+    );
+    groupKeys.forEach((groupKey) => syncGroupCheckbox(groupKey));
 }
 
 function pruneRowsWithNoRemainingParts() {
@@ -279,30 +313,63 @@ function pruneRowsWithNoRemainingParts() {
 
     keysToDelete.forEach((key) => selectedRows.delete(key));
     syncRowCheckboxesFromSelection();
+    syncAllGroupCheckboxes();
 }
 
-function onRowCheckboxChange(event) {
-    const checkbox = event.target.closest('.row-checkbox');
-    if (!checkbox) {
-        return;
-    }
-
+function selectRowFromCheckbox(checkbox) {
     const key = checkbox.dataset.rowKey;
     if (!key) {
         return;
     }
 
-    if (checkbox.checked) {
-        const entry = {
-            partNumber: checkbox.dataset.partNumber || '',
-            alternatives: parseAlternativesDataset(checkbox.dataset.alternatives),
-        };
-        selectedRows.set(key, entry);
-        getRowPartNumbers(entry).forEach((pn) => excludedPartNumbers.delete(pn));
-    } else {
-        selectedRows.delete(key);
+    const entry = {
+        partNumber: checkbox.dataset.partNumber || '',
+        alternatives: parseAlternativesDataset(checkbox.dataset.alternatives),
+    };
+    selectedRows.set(key, entry);
+    getRowPartNumbers(entry).forEach((pn) => excludedPartNumbers.delete(pn));
+    checkbox.checked = true;
+}
+
+function deselectRowFromCheckbox(checkbox) {
+    const key = checkbox.dataset.rowKey;
+    if (!key) {
+        return;
     }
 
+    selectedRows.delete(key);
+    checkbox.checked = false;
+}
+
+function onTableCheckboxChange(event) {
+    const groupCheckbox = event.target.closest('.group-checkbox');
+    if (groupCheckbox) {
+        const groupKey = groupCheckbox.dataset.groupKey;
+        const rowCheckboxes = queryCheckboxesByGroup(groupKey, '.row-checkbox');
+
+        if (groupCheckbox.checked) {
+            rowCheckboxes.forEach((checkbox) => selectRowFromCheckbox(checkbox));
+        } else {
+            rowCheckboxes.forEach((checkbox) => deselectRowFromCheckbox(checkbox));
+        }
+
+        groupCheckbox.indeterminate = false;
+        updateSelectedPartsBar();
+        return;
+    }
+
+    const checkbox = event.target.closest('.row-checkbox');
+    if (!checkbox) {
+        return;
+    }
+
+    if (checkbox.checked) {
+        selectRowFromCheckbox(checkbox);
+    } else {
+        deselectRowFromCheckbox(checkbox);
+    }
+
+    syncGroupCheckbox(checkbox.dataset.groupKey);
     updateSelectedPartsBar();
 }
 
@@ -332,9 +399,14 @@ function toggleSelectedPartsDetails() {
 function clearSelection() {
     selectedRows.clear();
     excludedPartNumbers.clear();
-    rfqTableBody.querySelectorAll('.row-checkbox:checked').forEach((checkbox) => {
+    rfqTableBody.querySelectorAll('.row-checkbox').forEach((checkbox) => {
         checkbox.checked = false;
     });
+    rfqTableBody.querySelectorAll('.group-checkbox').forEach((checkbox) => {
+        checkbox.checked = false;
+        checkbox.indeterminate = false;
+    });
+    hideCopyStatus();
     updateSelectedPartsBar();
 }
 
@@ -359,28 +431,47 @@ function onSelectedPartsListClick(event) {
     removePartNumberFromSelection(removeButton.dataset.partNumber);
 }
 
-function startSearchWithSelectedParts() {
+function hideCopyStatus() {
+    if (copyStatusTimer) {
+        clearTimeout(copyStatusTimer);
+        copyStatusTimer = null;
+    }
+    selectedPartsCopyStatus.hidden = true;
+    selectedPartsCopyStatus.textContent = '';
+}
+
+function showCopyStatus(message) {
+    hideCopyStatus();
+    selectedPartsCopyStatus.hidden = false;
+    selectedPartsCopyStatus.textContent = message;
+    copyStatusTimer = setTimeout(() => {
+        hideCopyStatus();
+    }, 3500);
+}
+
+function copySelectedPartsToSearch() {
     const partNumbers = getDedupedSelectedPartNumbers();
     if (!partNumbers.length) {
         return;
     }
 
     localStorage.setItem(PENDING_SEARCH_PARTS_KEY, JSON.stringify(partNumbers));
-    window.location.href = 'index.html';
+    showCopyStatus(`Copied ${partNumbers.length} part number${partNumbers.length === 1 ? '' : 's'} to search. Open the main page when ready.`);
 }
 
 function updateSelectedPartsBar() {
     const rowCount = selectedRows.size;
     const partNumbers = getDedupedSelectedPartNumbers();
     const hasSelection = rowCount > 0;
+    const hasParts = partNumbers.length > 0;
 
     selectedPartsCount.textContent = `${rowCount} row${rowCount === 1 ? '' : 's'} selected`;
-    selectedPartsNumbersHint.textContent = hasSelection
+    selectedPartsNumbersHint.textContent = hasParts
         ? `· ${partNumbers.length} part number${partNumbers.length === 1 ? '' : 's'}`
         : '';
 
     clearSelectedParts.disabled = !hasSelection;
-    searchSelectedParts.disabled = !hasSelection;
+    searchSelectedParts.disabled = !hasParts;
 
     if (!partNumbers.length) {
         selectedPartsList.innerHTML = '<p class="selected-parts-empty">No parts selected</p>';
@@ -405,6 +496,22 @@ function updateSelectedPartsBar() {
     `;
 }
 
+function getGroupCheckState(clientId, item) {
+    const parts = Array.isArray(item.parts) ? item.parts : [];
+    let selectedCount = 0;
+
+    parts.forEach((_, partIndex) => {
+        if (selectedRows.has(buildRowKey(clientId, item, partIndex))) {
+            selectedCount += 1;
+        }
+    });
+
+    return {
+        checked: parts.length > 0 && selectedCount === parts.length,
+        indeterminate: selectedCount > 0 && selectedCount < parts.length,
+    };
+}
+
 function renderTable(items) {
     if (!items.length) {
         rfqTableBody.innerHTML = '';
@@ -423,6 +530,8 @@ function renderTable(items) {
         const subject = escapeHtml(item.subject || '(No subject)');
         const receivedAt = formatReceivedAt(item.received_at);
         const rowspan = parts.length;
+        const groupKey = buildGroupKey(clientId, item);
+        const groupState = getGroupCheckState(clientId, item);
 
         parts.forEach((part, partIndex) => {
             const partNumberRaw = normalizePartNumber(part.part_number);
@@ -446,27 +555,42 @@ function renderTable(items) {
             if (isGroupStart) {
                 subjectCell = `
                     <td class="col-subject" rowspan="${rowspan}">
-                        <div class="rfq-subject">${subject}</div>
-                        <div class="rfq-subject-time">${receivedAt}</div>
+                        <div class="rfq-subject-header">
+                            <input
+                                type="checkbox"
+                                class="group-checkbox"
+                                data-group-key="${escapeHtml(groupKey)}"
+                                ${groupState.checked ? 'checked' : ''}
+                                aria-label="Select all parts in this letter"
+                                title="Select all parts in this letter"
+                            >
+                            <div class="rfq-subject-text">
+                                <div class="rfq-subject">${subject}</div>
+                                <div class="rfq-subject-time">${receivedAt}</div>
+                            </div>
+                        </div>
                     </td>
                 `;
             }
 
             rows.push(`
                 <tr class="${rowClass}">
-                    <td class="select-column">
-                        <input
-                            type="checkbox"
-                            class="row-checkbox"
-                            data-row-key="${escapeHtml(rowKey)}"
-                            data-part-number="${escapeHtml(partNumberRaw)}"
-                            data-alternatives="${escapeHtml(JSON.stringify(alternativesRaw))}"
-                            ${isChecked ? 'checked' : ''}
-                            aria-label="Select part ${partNumber}"
-                        >
-                    </td>
                     ${subjectCell}
-                    <td class="col-part-number">${partNumber}</td>
+                    <td class="col-part-number">
+                        <label class="rfq-part-select">
+                            <input
+                                type="checkbox"
+                                class="row-checkbox"
+                                data-row-key="${escapeHtml(rowKey)}"
+                                data-group-key="${escapeHtml(groupKey)}"
+                                data-part-number="${escapeHtml(partNumberRaw)}"
+                                data-alternatives="${escapeHtml(JSON.stringify(alternativesRaw))}"
+                                ${isChecked ? 'checked' : ''}
+                                aria-label="Select part ${partNumber}"
+                            >
+                            <span class="rfq-part-number-text">${partNumber}</span>
+                        </label>
+                    </td>
                     <td class="col-description">${description}</td>
                     <td class="col-quantity">${quantity}</td>
                     <td class="col-alternatives">${alternatives}</td>
@@ -476,6 +600,24 @@ function renderTable(items) {
     });
 
     rfqTableBody.innerHTML = rows.join('');
+
+    rfqTableBody.querySelectorAll('.group-checkbox').forEach((checkbox) => {
+        const groupKey = checkbox.dataset.groupKey;
+        const groupState = getGroupCheckStateFromDom(groupKey);
+        checkbox.checked = groupState.checked;
+        checkbox.indeterminate = groupState.indeterminate;
+    });
+}
+
+function getGroupCheckStateFromDom(groupKey) {
+    const rowCheckboxes = queryCheckboxesByGroup(groupKey, '.row-checkbox');
+    const selectedCount = rowCheckboxes.filter((checkbox) => selectedRows.has(checkbox.dataset.rowKey)).length;
+    const total = rowCheckboxes.length;
+
+    return {
+        checked: total > 0 && selectedCount === total,
+        indeterminate: selectedCount > 0 && selectedCount < total,
+    };
 }
 
 function setupScrollObserver() {

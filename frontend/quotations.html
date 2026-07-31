@@ -55,9 +55,10 @@
                     </button>
                     <div class="selected-parts-actions">
                         <button type="button" class="btn btn-secondary btn-sm" id="clearSelectedParts" disabled>Clear</button>
-                        <button type="button" class="btn btn-primary btn-sm" id="searchSelectedParts" disabled>Search</button>
+                        <button type="button" class="btn btn-primary btn-sm" id="searchSelectedParts" disabled>Copy to search</button>
                     </div>
                 </div>
+                <div class="selected-parts-copy-status" id="selectedPartsCopyStatus" hidden></div>
                 <div class="selected-parts-details" id="selectedPartsDetails" hidden>
                     <div class="selected-parts-list" id="selectedPartsList"></div>
                 </div>
@@ -68,7 +69,6 @@
                 <div class="rfq-table-wrap" id="rfqTableWrap" hidden>
                     <table class="rfq-table" id="rfqTable">
                         <colgroup>
-                            <col class="col-select">
                             <col class="col-subject">
                             <col class="col-part-number">
                             <col class="col-description">
@@ -77,7 +77,6 @@
                         </colgroup>
                         <thead>
                             <tr>
-                                <th class="select-column" aria-label="Select row"></th>
                                 <th>Subject</th>
                                 <th>Part Number</th>
                                 <th>Description</th>
