@@ -90,6 +90,7 @@ func (p Proponent) Login(ctx context.Context, username string, password string) 
 	}
 
 	_ = p.searchC.SetCookies(searchURL, p.loginC.Cookies(loginURL))
+	_ = p.detailsC.SetCookies(detailsURL, p.loginC.Cookies(loginURL))
 
 	return p.loginState.err
 }

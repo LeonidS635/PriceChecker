@@ -47,33 +47,27 @@ func (p Proponent) configureSearch() {
 			}
 			resp := response{}
 
-			log.Println("BODYx", r.Body)
-
 			if err := json.Unmarshal(r.Body, &resp); err != nil {
 				p.searchState.err = err
-				return
-			}
-			if len(resp) > 1 {
-				p.searchState.err = errors.New("unexpected format of part response")
 				return
 			}
 			if len(resp) == 0 {
 				return
 			}
 
-			log.Println("SEARCH RESULT", resp)
+			basePart := resp[0]
 
 			var baseOffer dto.Offer
-			baseOffer.PartNumber = resp[0].PartNumber
-			baseOffer.Description = resp[0].Description
-			if resp[0].QTY == "Out of Stock" {
+			baseOffer.PartNumber = basePart.PartNumber
+			baseOffer.Description = basePart.Description
+			if basePart.QTY == "Out of Stock" {
 				baseOffer.OtherInformation = "Out of stock"
 			} else {
-				baseOffer.QTY, _ = strconv.Atoi(resp[0].QTY)
+				baseOffer.QTY, _ = strconv.Atoi(basePart.QTY)
 			}
-			baseOffer.Price, _ = utils.GetPriceFromString(resp[0].Price)
-			baseOffer.LeadTime = resp[0].LeadTime
-			if resp[0].PriceBreaks != "No" {
+			baseOffer.Price, _ = utils.GetPriceFromString(basePart.Price)
+			baseOffer.LeadTime = basePart.LeadTime
+			if basePart.PriceBreaks != "No" {
 				text := "Part has quantity sensitive pricing"
 				if baseOffer.OtherInformation == "" {
 					baseOffer.OtherInformation = text
@@ -81,10 +75,13 @@ func (p Proponent) configureSearch() {
 					baseOffer.OtherInformation = strings.Join([]string{baseOffer.OtherInformation, text}, "\n")
 				}
 			}
-			for _, w := range resp[0].Warehouses {
+			for i := 1; i < len(resp); i++ {
+				baseOffer.Interchangeable = append(baseOffer.Interchangeable, resp[i].PartNumber)
+			}
+			for _, w := range basePart.Warehouses {
 				offer := baseOffer
 				offer.Warehouse = strings.TrimPrefix(w.Name, "Warehouse: ")
-				offer.QTY, _ = strconv.Atoi(resp[0].QTY)
+				offer.QTY, _ = strconv.Atoi(basePart.QTY)
 				if len(w.Date) > 0 && w.Date[0] != "" {
 					text := fmt.Sprintf("Date Next In: %s", strings.Fields(w.Date[0])[0])
 					if offer.OtherInformation == "" {
@@ -129,8 +126,6 @@ func (p Proponent) configureSearch() {
 				return
 			}
 
-			log.Println("DETAILS", resp)
-
 			if details, ok := resp.Details[p.searchState.requestedPN]; ok {
 				div, err := goquery.NewDocumentFromReader(strings.NewReader(details))
 				if err != nil {
@@ -159,6 +154,7 @@ func (p Proponent) Search(ctx context.Context, partNumber string) ([]dto.Offer, 
 
 	headers := http.Header{}
 	headers.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36")
+	headers.Set("Content-Type", "application/json")
 
 	p.searchState.requestedPN = strings.ToUpper(partNumber)
 
@@ -171,15 +167,21 @@ func (p Proponent) Search(ctx context.Context, partNumber string) ([]dto.Offer, 
 		return nil, err
 	}
 
-	searchBody := map[string]string{
-		"nd":      strconv.FormatInt(time.Now().UnixMilli(), 10),
-		"page":    "1",
-		"rows":    "10",
-		"sidx":    "Item_site",
-		"sord":    "asc",
-		"_search": "false",
-	}
-	marshalledSearchBody, _ := json.Marshal(searchBody)
+	marshalledSearchBody, _ := json.Marshal(struct {
+		Nd     int64  `json:"nd"`
+		Page   int    `json:"page"`
+		Rows   int    `json:"rows"`
+		Sidx   string `json:"sidx"`
+		Sord   string `json:"sord"`
+		Search bool   `json:"_search"`
+	}{
+		Nd:     time.Now().UnixMilli(),
+		Page:   1,
+		Rows:   20,
+		Sidx:   "Item_site",
+		Sord:   "asc",
+		Search: false,
+	})
 	if err := p.searchC.Request(http.MethodPost, searchURL, bytes.NewReader(marshalledSearchBody), nil, headers); err != nil {
 		log.Println("search err", err)
 		return nil, err
@@ -189,10 +191,11 @@ func (p Proponent) Search(ctx context.Context, partNumber string) ([]dto.Offer, 
 		return nil, p.searchState.err
 	}
 
-	detailsBody := map[string]string{
-		"partIds": fmt.Sprintf("[%s]", strings.ToUpper(partNumber)),
-	}
-	marshalledDetailsBody, _ := json.Marshal(detailsBody)
+	marshalledDetailsBody, _ := json.Marshal(struct {
+		PartIds []string `json:"partIds"`
+	}{
+		PartIds: []string{strings.ToUpper(partNumber)},
+	})
 	if err := p.detailsC.Request(http.MethodPost, detailsURL, bytes.NewReader(marshalledDetailsBody), nil, headers); err != nil {
 		log.Println("details err", err)
 		return nil, err
