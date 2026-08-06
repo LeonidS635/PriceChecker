@@ -118,9 +118,7 @@ func (s SatAir) formOffers(batch int) {
 			for _, plant := range productsPlantsMap[productID].Plants {
 				newOffer := offer
 				newOffer.QTY = plant.QTY
-				if newOffer.Warehouse == "" {
-					newOffer.Warehouse = plant.Warehouse.Name
-				}
+				newOffer.Warehouse = plant.Warehouse.Name
 
 				s.searchState.offers = append(s.searchState.offers, newOffer)
 			}

@@ -81,7 +81,7 @@ func (p Proponent) configureSearch() {
 			for _, w := range basePart.Warehouses {
 				offer := baseOffer
 				offer.Warehouse = strings.TrimPrefix(w.Name, "Warehouse: ")
-				offer.QTY, _ = strconv.Atoi(basePart.QTY)
+				offer.QTY = w.QTY
 				if len(w.Date) > 0 && w.Date[0] != "" {
 					text := fmt.Sprintf("Date Next In: %s", strings.Fields(w.Date[0])[0])
 					if offer.OtherInformation == "" {
