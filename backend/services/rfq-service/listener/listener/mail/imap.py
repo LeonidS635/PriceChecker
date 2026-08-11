@@ -65,6 +65,18 @@ def _normalize_internal_date(value: datetime) -> datetime:
     return value.astimezone(timezone.utc)
 
 
+def _normalize_message_id(value: str) -> str:
+    """Normalize a Message-ID / In-Reply-To token for IMAP HEADER search."""
+    token = value.strip().split()[0] if value.strip() else ""
+    if not token:
+        return ""
+    if not token.startswith("<"):
+        token = f"<{token}"
+    if not token.endswith(">"):
+        token = f"{token}>"
+    return token
+
+
 def _extract_body(msg: MimeMessage) -> tuple[str, str]:
     html_parts: list[str] = []
     plain_parts: list[str] = []
@@ -141,6 +153,7 @@ class ImapMailClient:
         self._username = settings.imap_username
         self._password = settings.imap_password
         self._mailboxes = settings.imap_mailboxes
+        self._sent_mailbox = settings.imap_sent_mailbox
         self._state_path = Path(settings.imap_state_path)
 
     def iter_new_messages(self) -> Iterable[EmailMessage]:
@@ -154,6 +167,25 @@ class ImapMailClient:
                 yield from self._iter_folder_messages(client, mailbox, state)
 
         _save_state(self._state_path, state)
+
+    def has_sent_message(self, message_id: str) -> bool:
+        normalized = _normalize_message_id(message_id)
+        if not normalized:
+            return False
+
+        try:
+            with IMAPClient(self._host, port=self._port, ssl=self._use_ssl) as client:
+                client.login(self._username, self._password)
+                client.select_folder(self._sent_mailbox, readonly=True)
+                found = client.search(["HEADER", "Message-ID", normalized])
+                return bool(found)
+        except Exception:
+            logger.exception(
+                "Failed to look up Message-ID %s in Sent mailbox '%s'",
+                normalized,
+                self._sent_mailbox,
+            )
+            return False
 
     def _iter_folder_messages(
         self,

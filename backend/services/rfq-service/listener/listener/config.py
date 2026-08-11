@@ -46,6 +46,7 @@ class Settings:
     imap_username: str
     imap_password: str
     imap_mailboxes: list[str]
+    imap_sent_mailbox: str
     imap_state_path: str
     poll_interval_seconds: int
 
@@ -69,6 +70,7 @@ class Settings:
             imap_username=os.environ["RFQ_IMAP_USERNAME"],
             imap_password=os.environ["RFQ_IMAP_PASSWORD"],
             imap_mailboxes=_split_csv(os.environ.get("RFQ_IMAP_MAILBOXES", "INBOX")),
+            imap_sent_mailbox=os.environ.get("RFQ_IMAP_SENT_MAILBOX", "Sent").strip() or "Sent",
             imap_state_path=os.environ.get("RFQ_IMAP_STATE_PATH", "/data/imap_state.json"),
             poll_interval_seconds=int(os.environ["RFQ_POLL_INTERVAL_SECONDS"]),
         )

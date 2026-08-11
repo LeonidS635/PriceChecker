@@ -134,7 +134,7 @@ def test_should_process_requires_allowed_domain() -> None:
     assert not should_process_email(message, {"other.com": 99})
 
 
-def test_should_process_rejects_reply_even_when_it_contains_rfq() -> None:
+def test_should_process_rejects_reply_to_own_sent() -> None:
     original = _sample_message()
     reply = EmailMessage(
         source_message_id="message-2",
@@ -147,4 +147,20 @@ def test_should_process_rejects_reply_even_when_it_contains_rfq() -> None:
         attachments=original.attachments,
     )
 
-    assert not should_process_email(reply, {"example.com": 42})
+    assert not should_process_email(reply, {"example.com": 42}, is_reply_to_own_sent=True)
+
+
+def test_should_process_allows_reply_when_not_to_own_sent() -> None:
+    original = _sample_message()
+    reply = EmailMessage(
+        source_message_id="message-2",
+        sender_email=original.sender_email,
+        subject=f"Re: {original.subject}",
+        received_at=original.received_at,
+        body=original.body,
+        in_reply_to="<someone-else@example.com>",
+        references="<someone-else@example.com>",
+        attachments=original.attachments,
+    )
+
+    assert should_process_email(reply, {"example.com": 42}, is_reply_to_own_sent=False)

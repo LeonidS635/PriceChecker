@@ -16,6 +16,7 @@ from listener.mail.imap import (
     _extract_body,
     _folder_cursor,
     _load_state,
+    _normalize_message_id,
     _parse_raw_message,
     _set_folder_cursor,
 )
@@ -38,6 +39,7 @@ def _settings(state_path: Path, mailboxes: list[str] | None = None) -> Settings:
         imap_username="user@example.com",
         imap_password="secret",
         imap_mailboxes=mailboxes or ["INBOX"],
+        imap_sent_mailbox="Sent",
         imap_state_path=str(state_path),
         poll_interval_seconds=60,
     )
@@ -174,6 +176,53 @@ class _FakeImapClient:
         mailbox = self.current_mailbox
         assert mailbox is not None
         return {uid: self.folders[mailbox]["messages"][uid] for uid in uids}
+
+
+def test_normalize_message_id_wraps_and_takes_first_token() -> None:
+    assert _normalize_message_id("<id@example.com>") == "<id@example.com>"
+    assert _normalize_message_id("id@example.com") == "<id@example.com>"
+    assert _normalize_message_id("  <a@x> <b@y>  ") == "<a@x>"
+    assert _normalize_message_id("   ") == ""
+
+
+@patch("listener.mail.imap.IMAPClient")
+def test_has_sent_message_searches_configured_sent_mailbox(
+    mock_imap_class: MagicMock, tmp_path: Path
+) -> None:
+    state_path = tmp_path / "imap_state.json"
+    fake_client = _FakeImapClient(
+        {
+            "Sent": {
+                "select": {b"UIDVALIDITY": 1, b"UIDNEXT": 2},
+                "search": {("HEADER", "Message-ID", "<sent-1@example.com>"): [1]},
+                "messages": {},
+            }
+        }
+    )
+    mock_imap_class.return_value = fake_client
+
+    client = ImapMailClient(_settings(state_path))
+
+    assert client.has_sent_message("<sent-1@example.com>")
+    assert not client.has_sent_message("<missing@example.com>")
+    assert fake_client.current_mailbox == "Sent"
+
+
+@patch("listener.mail.imap.IMAPClient")
+def test_has_sent_message_fail_open_on_imap_error(
+    mock_imap_class: MagicMock, tmp_path: Path
+) -> None:
+    state_path = tmp_path / "imap_state.json"
+
+    class _BrokenImapClient(_FakeImapClient):
+        def select_folder(self, mailbox: str, readonly: bool = False) -> dict[bytes, int]:
+            raise RuntimeError("sent folder missing")
+
+    mock_imap_class.return_value = _BrokenImapClient({})
+
+    client = ImapMailClient(_settings(state_path))
+
+    assert client.has_sent_message("<sent-1@example.com>") is False
 
 
 @patch("listener.mail.imap.IMAPClient")

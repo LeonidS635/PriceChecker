@@ -206,9 +206,14 @@ def is_rfq_email(subject: str, body: str, attachments: list[Attachment] | None =
     return _has_rfq_like_attachment(attachments or [])
 
 
-def should_process_email(message: EmailMessage, allowed_domains: dict[str, int]) -> bool:
-    if message.is_reply:
-        logger.info("message is a reply")
+def should_process_email(
+    message: EmailMessage,
+    allowed_domains: dict[str, int],
+    *,
+    is_reply_to_own_sent: bool = False,
+) -> bool:
+    if is_reply_to_own_sent:
+        logger.info("message is a reply to our sent mail")
         return False
 
     is_message_sender_allowed = is_allowed_sender(message.sender_email, allowed_domains)
@@ -220,5 +225,5 @@ def should_process_email(message: EmailMessage, allowed_domains: dict[str, int])
     if not is_message_rfq:
         logger.info("message is not rfq")
         return False
-    
+
     return True

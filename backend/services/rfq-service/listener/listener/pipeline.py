@@ -56,7 +56,14 @@ def process_once(
 ) -> int:
     published = 0
     for message in mail.iter_new_messages():
-        if not should_process_email(message, settings.allowed_domains):
+        is_reply_to_own_sent = bool(
+            message.in_reply_to and mail.has_sent_message(message.in_reply_to)
+        )
+        if not should_process_email(
+            message,
+            settings.allowed_domains,
+            is_reply_to_own_sent=is_reply_to_own_sent,
+        ):
             logger.info("Skipping message '%s' from %s", message.subject, message.sender_email)
             continue
 
