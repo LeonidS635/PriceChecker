@@ -64,7 +64,6 @@ class OpenAILLMClient:
             completion = self._client.chat.completions.parse(
                 model=self._model,
                 response_format=_ExtractionSchema,
-                temperature=0.0,
                 messages=[
                     {"role": "system", "content": _SYSTEM_PROMPT},
                     {"role": "user", "content": text},
