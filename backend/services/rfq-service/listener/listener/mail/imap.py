@@ -4,6 +4,8 @@ import email
 import email.policy
 import json
 import logging
+import os
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from email.message import EmailMessage as MimeMessage
@@ -30,15 +32,38 @@ class FolderCursor:
 def _load_state(path: Path) -> dict[str, dict[str, int]]:
     if not path.exists():
         return {}
-    data = json.loads(path.read_text())
+    raw = path.read_text().strip()
+    if not raw:
+        logger.warning("IMAP state file %s is empty; starting with a fresh cursor", path)
+        return {}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning("IMAP state file %s is invalid JSON; starting with a fresh cursor", path)
+        return {}
     if not isinstance(data, dict):
+        logger.warning("IMAP state file %s has unexpected shape; starting with a fresh cursor", path)
         return {}
     return data
 
 
 def _save_state(path: Path, state: dict[str, dict[str, int]]) -> None:
+    """Atomically persist state so a crash mid-write cannot leave an empty file."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(state, indent=2, sort_keys=True))
+    payload = json.dumps(state, indent=2, sort_keys=True)
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as tmp:
+            tmp.write(payload)
+            tmp.flush()
+            os.fsync(tmp.fileno())
+        os.replace(tmp_name, path)
+    except Exception:
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
+        raise
 
 
 def _folder_cursor(state: dict[str, dict[str, int]], mailbox: str) -> FolderCursor | None:
